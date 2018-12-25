@@ -28,10 +28,10 @@ namespace SourceGen.AsmGen {
         /// 
         /// This code is common to all generators.
         /// </summary>
-        /// <param name="project"></param>
-        /// <param name="formatter"></param>
-        /// <param name="sw"></param>
-        /// <param name="worker"></param>
+        /// <param name="gen">Reference to generator object (presumably the caller).</param>
+        /// <param name="sw">Text output sink.</param>
+        /// <param name="worker">Background worker object, for progress updates and
+        ///   cancelation requests.</param>
         public static void Generate(IGenerator gen, StreamWriter sw, BackgroundWorker worker) {
             DisasmProject proj = gen.Project;
             Formatter formatter = gen.SourceFormatter;
@@ -66,7 +66,7 @@ namespace SourceGen.AsmGen {
                 // Check for address change.
                 int orgAddr = proj.AddrMap.Get(offset);
                 if (orgAddr >= 0) {
-                    gen.OutputOrgDirective(orgAddr);
+                    gen.OutputOrgDirective(offset, orgAddr);
                 }
 
                 if (attr.IsInstructionStart) {
@@ -141,7 +141,8 @@ namespace SourceGen.AsmGen {
             foreach (DefSymbol defSym in proj.ActiveDefSymbolList) {
                 // Use an operand length of 1 so things are shown as concisely as possible.
                 string valueStr = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                    gen.Localizer.LabelMap, defSym.DataDescriptor, defSym.Value, 1, false);
+                    gen.Localizer.LabelMap, defSym.DataDescriptor, defSym.Value, 1,
+                    PseudoOp.FormatNumericOpFlags.None);
                 gen.OutputEquDirective(defSym.Label, valueStr, defSym.Comment);
             }
 
@@ -170,13 +171,21 @@ namespace SourceGen.AsmGen {
             if (op.IsWidthPotentiallyAmbiguous) {
                 wdis = OpDef.GetWidthDisambiguation(instrLen, operand);
             }
+            if (gen.Quirks.SinglePassAssembler && wdis == OpDef.WidthDisambiguation.None &&
+                    (op.AddrMode == OpDef.AddressMode.DP ||
+                        op.AddrMode == OpDef.AddressMode.DPIndexX) ||
+                        op.AddrMode == OpDef.AddressMode.DPIndexY) {
+                // Could be a forward reference to a direct-page label.
+                if (IsForwardLabelReference(gen, offset)) {
+                    wdis = OpDef.WidthDisambiguation.ForceDirect;
+                }
+            }
 
-            string replMnemonic = gen.ReplaceMnemonic(op);
             string opcodeStr = formatter.FormatOpcode(op, wdis);
 
             string formattedOperand = null;
             int operandLen = instrLen - 1;
-            bool isPcRel = false;
+            PseudoOp.FormatNumericOpFlags opFlags = PseudoOp.FormatNumericOpFlags.None;
             bool isPcRelBankWrap = false;
 
             // Tweak branch instructions.  We want to show the absolute address rather
@@ -185,12 +194,16 @@ namespace SourceGen.AsmGen {
             if (op.AddrMode == OpDef.AddressMode.PCRel) {
                 Debug.Assert(attr.OperandAddress >= 0);
                 operandLen = 2;
-                isPcRel = true;
+                opFlags = PseudoOp.FormatNumericOpFlags.IsPcRel;
             } else if (op.AddrMode == OpDef.AddressMode.PCRelLong ||
                     op.AddrMode == OpDef.AddressMode.StackPCRelLong) {
-                isPcRel = true;
+                opFlags = PseudoOp.FormatNumericOpFlags.IsPcRel;
+            } else if (op.AddrMode == OpDef.AddressMode.Imm ||
+                    op.AddrMode == OpDef.AddressMode.ImmLongA ||
+                    op.AddrMode == OpDef.AddressMode.ImmLongXY) {
+                opFlags = PseudoOp.FormatNumericOpFlags.HasHashPrefix;
             }
-            if (isPcRel) {
+            if (opFlags == PseudoOp.FormatNumericOpFlags.IsPcRel) {
                 int branchDist = attr.Address - attr.OperandAddress;
                 isPcRelBankWrap = branchDist > 32767 || branchDist < -32768;
             }
@@ -202,15 +215,18 @@ namespace SourceGen.AsmGen {
                 operandForSymbol = attr.OperandAddress;
             }
 
-            // Check Length to watch for bogus descriptors (?)
+            // Check Length to watch for bogus descriptors.  (ApplyFormatDescriptors() should
+            // now be screening bad descriptors out, so we may not need the Length test.)
             if (attr.DataDescriptor != null && attr.Length == attr.DataDescriptor.Length) {
                 // Format operand as directed.
                 if (op.AddrMode == OpDef.AddressMode.BlockMove) {
                     // Special handling for the double-operand block move.
                     string opstr1 = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                        gen.Localizer.LabelMap, attr.DataDescriptor, operand >> 8, 1, false);
+                        gen.Localizer.LabelMap, attr.DataDescriptor, operand >> 8, 1,
+                        PseudoOp.FormatNumericOpFlags.None);
                     string opstr2 = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                        gen.Localizer.LabelMap, attr.DataDescriptor, operand & 0xff, 1, false);
+                        gen.Localizer.LabelMap, attr.DataDescriptor, operand & 0xff, 1,
+                        PseudoOp.FormatNumericOpFlags.None);
                     if (gen.Quirks.BlockMoveArgsReversed) {
                         string tmp = opstr1;
                         opstr1 = opstr2;
@@ -220,7 +236,7 @@ namespace SourceGen.AsmGen {
                 } else {
                     formattedOperand = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
                         gen.Localizer.LabelMap, attr.DataDescriptor,
-                        operandForSymbol, operandLen, isPcRel);
+                        operandForSymbol, operandLen, opFlags);
                 }
             } else {
                 // Show operand value in hex.
@@ -260,6 +276,7 @@ namespace SourceGen.AsmGen {
             }
             string commentStr = formatter.FormatEolComment(eolComment);
 
+            string replMnemonic = gen.ModifyOpcode(offset, op);
             if (attr.Length != instrBytes) {
                 // This instruction has another instruction inside it.  Throw out what we
                 // computed and just output as bytes.
@@ -291,8 +308,31 @@ namespace SourceGen.AsmGen {
         }
 
         /// <summary>
+        /// Determines whether the instruction at the specified offset has an operand that is
+        /// a forward reference.  This only matters for single-pass assemblers.
+        /// </summary>
+        /// <param name="gen">Source generator reference.</param>
+        /// <param name="offset">Offset of instruction opcode.</param>
+        /// <returns>True if the instruction's operand is a forward reference to a label.</returns>
+        private static bool IsForwardLabelReference(IGenerator gen, int offset) {
+            DisasmProject proj = gen.Project;
+            Debug.Assert(proj.GetAnattrib(offset).IsInstructionStart);
+
+            FormatDescriptor dfd = proj.GetAnattrib(offset).DataDescriptor;
+            if (dfd == null || !dfd.HasSymbol) {
+                return false;
+            }
+            int labelOffset = proj.FindLabelOffsetByName(dfd.SymbolRef.Label);
+            if (labelOffset <= offset) {
+                // Doesn't exist, or is backward reference.
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Configures some common format config items from the app settings.  Uses a
-        /// passed-in object, rather than the global settings.
+        /// passed-in settings object, rather than the global settings.
         /// </summary>
         /// <param name="settings">Application settings.</param>
         /// <param name="config">Format config struct.</param>
@@ -310,6 +350,8 @@ namespace SourceGen.AsmGen {
                 settings.GetBool(AppSettings.FMT_UPPER_OPERAND_S, false);
             config.mUpperOperandXY =
                 settings.GetBool(AppSettings.FMT_UPPER_OPERAND_XY, false);
+            config.mSpacesBetweenBytes =
+                settings.GetBool(AppSettings.FMT_SPACES_BETWEEN_BYTES, false);
             config.mAddSpaceLongComment =
                 settings.GetBool(AppSettings.FMT_ADD_SPACE_FULL_COMMENT, true);
 

@@ -196,7 +196,8 @@ namespace SourceGen {
         }
 
         /// <summary>
-        /// Extracts the operand offset from a data item.
+        /// Extracts the operand offset from a data item.  Only useful for numeric/Address
+        /// and numeric/Symbol.
         /// </summary>
         /// <param name="proj">Project reference.</param>
         /// <param name="offset">Offset of data item.</param>
@@ -227,6 +228,25 @@ namespace SourceGen {
             }
             int operandOffset = proj.AddrMap.AddressToOffset(offset, address);
             return operandOffset;
+        }
+
+        /// <summary>
+        /// Returns the "base" operand offset.  If the byte at the specified offset is not the
+        /// start of a code/data/inline-data item, walk backward until the start is found.
+        /// </summary>
+        /// <param name="proj">Project reference.</param>
+        /// <param name="offset">Start offset.</param>
+        /// <returns></returns>
+        public static int GetBaseOperandOffset(DisasmProject proj, int offset) {
+            Debug.Assert(offset >= 0 && offset < proj.FileDataLength);
+            while (!proj.GetAnattrib(offset).IsStart) {
+                offset--;
+
+                // Should not be possible to walk off the top of the list, since we're in
+                // the middle of something.
+                Debug.Assert(offset >= 0);
+            }
+            return offset;
         }
 
         /// <summary>
@@ -292,7 +312,7 @@ namespace SourceGen {
                 // up with a user or platform label that matches an auto label, so we
                 // need to do some renaming in that case.  Shouldn't happen often.
                 Symbol sym = SymbolTable.GenerateUniqueForAddress(mAnattribs[targetOffset].Address,
-                    mProject.SymbolTable);
+                    mProject.SymbolTable, "L");
                 mAnattribs[targetOffset].Symbol = sym;
                 // This will throw if the symbol already exists.  That is the desired
                 // behavior, as that would be a bug.

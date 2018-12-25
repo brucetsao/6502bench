@@ -154,7 +154,7 @@ namespace SourceGen {
 
             /// <summary>
             /// Numeric offset value.  Used to map a line item to the Anattrib.  Note this is
-            /// set for all lines, and is the the same for all lines in a multi-line sequence,
+            /// set for all lines, and is the same for all lines in a multi-line sequence,
             /// e.g. every line in a long comment has the file offset with which it is associated.
             /// </summary>
             public int FileOffset { get; private set; }
@@ -188,12 +188,7 @@ namespace SourceGen {
             public string SearchString { get; set; }
 
 
-            public Line(int offset, int span, Type type) {
-                FileOffset = offset;
-                OffsetSpan = span;
-                LineType = type;
-                SubLineIndex = 0;
-            }
+            public Line(int offset, int span, Type type) : this(offset, span, type, 0) { }
 
             public Line(int offset, int span, Type type, int subLineIndex) {
                 FileOffset = offset;
@@ -813,7 +808,8 @@ namespace SourceGen {
                 line = new Line(DefSymOffsetFromIndex(index), 0, Line.Type.EquDirective);
                 // Use an operand length of 1 so things are shown as concisely as possible.
                 string valueStr = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                    null, defSym.DataDescriptor, defSym.Value, 1, false);
+                    null, defSym.DataDescriptor, defSym.Value, 1,
+                    PseudoOp.FormatNumericOpFlags.None);
                 string comment = formatter.FormatEolComment(defSym.Comment);
                 parts = FormattedParts.CreateEquDirective(defSym.Label,
                     formatter.FormatPseudoOp(opNames.EquDirective),
@@ -875,6 +871,18 @@ namespace SourceGen {
                 }
             }
 
+            // Configure the initial value of addBlank.  The specific case we're handling is
+            // a no-continue instruction (e.g. JMP) followed by an instruction with a label.
+            // When we rename the label, we don't want the blank to disappear during the
+            // partial-list generation.
+            bool addBlank = false;
+            if (startOffset > 0) {
+                int baseOff = DataAnalysis.GetBaseOperandOffset(proj, startOffset - 1);
+                if (proj.GetAnattrib(baseOff).DoesNotContinue) {
+                    addBlank = true;
+                }
+            }
+
             int offset = startOffset;
             while (offset <= endOffset) {
                 Anattrib attr = proj.GetAnattrib(offset);
@@ -882,7 +890,11 @@ namespace SourceGen {
                         proj.GetAnattrib(offset - 1).IsData) {
                     // Transition from data to code.  (Don't add blank line for inline data.)
                     lines.Add(GenerateBlankLine(offset));
+                } else if (addBlank) {
+                    // Previous instruction wanted to be followed by a blank line.
+                    lines.Add(GenerateBlankLine(offset));
                 }
+                addBlank = false;
 
                 // Insert long comments and notes.  These may span multiple display lines,
                 // and require word-wrap, so it's easiest just to render them fully here.
@@ -953,8 +965,16 @@ namespace SourceGen {
                     // break in code, and before a data area.
                     // TODO(maybe): Might also want to do this if the next offset is data,
                     // to make things look nicer when code runs directly into data.
+                    //
+                    // We don't want to add it with the current line's offset.  If we do that,
+                    // the binary search will get confused, because blank lines have a span
+                    // of zero.  If the code is at offset 10 with length 3, and we search for
+                    // the byte at offset 11, then a blank line (with span=0) at offset 10 will
+                    // cause the binary search to assume that the target is farther down, when
+                    // it's actually one line up.  We deal with this by setting a flag and
+                    // generating the blank line on the next trip through the loop.
                     if (attr.DoesNotContinue) {
-                        lines.Add(GenerateBlankLine(offset));
+                        addBlank = true;
                     }
 
                     offset += len;
@@ -970,7 +990,7 @@ namespace SourceGen {
                 }
             }
 
-            // See if there were any address shifts in this section.  If so, add an ORG
+            // See if there were any address shifts in this section.  If so, insert an ORG
             // statement as the first entry for the offset.  We're expecting to have very
             // few AddressMap entries (usually just one), so it's more efficient to process
             // them here and walk through the sub-list than it is to ping the address map
@@ -1069,12 +1089,13 @@ namespace SourceGen {
                 // $00 is followed by actual code.  (But be a little freaked out that your
                 // code is running into a BRK.)
                 //opcodeStr = opcodeStr + " \u00bb";  // RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
-                opcodeStr = opcodeStr + " \u23e9";  // BLACK RIGHT-POINTING DOUBLE TRIANGLE
+                //opcodeStr = opcodeStr + " \u23e9";  // BLACK RIGHT-POINTING DOUBLE TRIANGLE
+                opcodeStr = opcodeStr + " \u25bc";  // BLACK DOWN-POINTING TRIANGLE
             }
 
             string formattedOperand = null;
             int operandLen = instrLen - 1;
-            bool isPcRel = false;
+            PseudoOp.FormatNumericOpFlags opFlags = PseudoOp.FormatNumericOpFlags.None;
 
             // Tweak branch instructions.  We want to show the absolute address rather
             // than the relative offset (which happens with the OperandAddress assignment
@@ -1082,10 +1103,14 @@ namespace SourceGen {
             if (op.AddrMode == OpDef.AddressMode.PCRel) {
                 Debug.Assert(attr.OperandAddress >= 0);
                 operandLen = 2;
-                isPcRel = true;
+                opFlags = PseudoOp.FormatNumericOpFlags.IsPcRel;
             } else if (op.AddrMode == OpDef.AddressMode.PCRelLong ||
                     op.AddrMode == OpDef.AddressMode.StackPCRelLong) {
-                isPcRel = true;
+                opFlags = PseudoOp.FormatNumericOpFlags.IsPcRel;
+            } else if (op.AddrMode == OpDef.AddressMode.Imm ||
+                    op.AddrMode == OpDef.AddressMode.ImmLongA ||
+                    op.AddrMode == OpDef.AddressMode.ImmLongXY) {
+                opFlags = PseudoOp.FormatNumericOpFlags.HasHashPrefix;
             }
 
             // Use the OperandAddress when available.  This is important for relative branch
@@ -1096,19 +1121,24 @@ namespace SourceGen {
                 operandForSymbol = attr.OperandAddress;
             }
 
-            // Check Length to watch for bogus descriptors (?)
+            // Check Length to watch for bogus descriptors.  ApplyFormatDescriptors() should
+            // have discarded anything appropriate, so we might be able to eliminate this test.
             if (attr.DataDescriptor != null && attr.Length == attr.DataDescriptor.Length) {
+                Debug.Assert(operandLen > 0);
+
                 // Format operand as directed.
                 if (op.AddrMode == OpDef.AddressMode.BlockMove) {
                     // Special handling for the double-operand block move.
                     string opstr1 = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                        null, attr.DataDescriptor, operand >> 8, 1, false);
+                        null, attr.DataDescriptor, operand >> 8, 1,
+                        PseudoOp.FormatNumericOpFlags.None);
                     string opstr2 = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                        null, attr.DataDescriptor, operand & 0xff, 1, false);
+                        null, attr.DataDescriptor, operand & 0xff, 1,
+                        PseudoOp.FormatNumericOpFlags.None);
                     formattedOperand = opstr1 + "," + opstr2;
                 } else {
                     formattedOperand = PseudoOp.FormatNumericOperand(formatter, proj.SymbolTable,
-                        null, attr.DataDescriptor, operandForSymbol, operandLen, isPcRel);
+                        null, attr.DataDescriptor, operandForSymbol, operandLen, opFlags);
                 }
             } else {
                 // Show operand value in hex.

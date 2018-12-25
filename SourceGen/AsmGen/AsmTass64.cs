@@ -24,11 +24,25 @@ using Asm65;
 using CommonUtil;
 
 namespace SourceGen.AsmGen {
+    #region IGenerator
+
     /// <summary>
-    /// Generate source code compatible with the cc65 assembler (https://github.com/cc65/cc65).
+    /// Generate source code compatible with the 64tass assembler
+    /// (https://sourceforge.net/projects/tass64/).
+    /// 
+    /// The assembler is officially called "64tass", but it's sometimes written "tass64" because
+    /// in some cases you can't start an identifier with a number.
+    /// 
+    /// We need to deal with a couple of unusual aspects:
+    ///  (1) The prefix for a local label is '_', which is generally a legal character.  So
+    ///    if somebody creates a label with a leading '_', and it's not actually local, we have
+    ///    to "de-local" it somehow.
+    ///  (2) By default, labels are handled in a case-insensitive fashion, which is extremely
+    ///    rare for programming languages.  Case sensitivity can be enabled with the "-C" flag.
+    ///    Anybody who wants to assemble the generated code will need to be aware of this.
     /// </summary>
-    public class GenCc65 : IGenerator {
-        private const string ASM_FILE_SUFFIX = "_cc65.S";
+    public class GenTass64 : IGenerator {
+        private const string ASM_FILE_SUFFIX = "_64tass.S"; // must start with underscore
         private const int MAX_OPERAND_LEN = 64;
 
         // IGenerator
@@ -57,6 +71,11 @@ namespace SourceGen.AsmGen {
         private bool mLongLabelNewLine;
 
         /// <summary>
+        /// Output column widths.
+        /// </summary>
+        private int[] mColumnWidths;
+
+        /// <summary>
         /// Base filename.  Typically the project file name without the ".dis65" extension.
         /// </summary>
         private string mFileNameBase;
@@ -77,42 +96,52 @@ namespace SourceGen.AsmGen {
         private StreamWriter mOutStream;
 
         /// <summary>
-        /// The first time we output a high-ASCII string, we generate a macro for it.
+        /// If we output a ".logical", we will need a ".here" eventually.
         /// </summary>
-        private bool mHighAsciiMacroOutput;
+        private bool mNeedHereOp;
 
         /// <summary>
         /// Holds detected version of configured assembler.
         /// </summary>
         private CommonUtil.Version mAsmVersion = CommonUtil.Version.NO_VERSION;
 
-        // We test against this in a few places.
-        private static CommonUtil.Version V2_17 = new CommonUtil.Version(2, 17);
+        // Version we're coded against.
+        private static CommonUtil.Version V1_53 = new CommonUtil.Version(1, 53, 1515);
 
 
         // Pseudo-op string constants.
         private static PseudoOp.PseudoOpNames sDataOpNames = new PseudoOp.PseudoOpNames() {
             EquDirective = "=",
-            OrgDirective = ".org",
-            //RegWidthDirective         // .a8, .a16, .i8, .i16
+            OrgDirective = ".logical",
+            //RegWidthDirective         // .as, .al, .xs, .xl
             DefineData1 = ".byte",
             DefineData2 = ".word",
-            DefineData3 = ".faraddr",
+            DefineData3 = ".long",
             DefineData4 = ".dword",
-            DefineBigData2 = ".dbyt",
+            //DefineBigData2
             //DefineBigData3
             //DefineBigData4
-            Fill = ".res",
+            Fill = ".fill",
             //Dense                     // no equivalent, use .byte with comma-separated args
-            StrGeneric = ".byte",
+            StrGeneric = ".text",
             //StrReverse
-            StrNullTerm = ".asciiz",
-            //StrLen8                   // macro with .strlen?
+            StrNullTerm = ".null",
+            StrLen8 = ".ptext",
             //StrLen16
             //StrDci
             //StrDciReverse
         };
+        private const string HERE_PSEUDO_OP = ".here";
 
+
+        // IGenerator
+        public void GetDefaultDisplayFormat(out PseudoOp.PseudoOpNames pseudoOps,
+                out Formatter.FormatConfig formatConfig) {
+            pseudoOps = sDataOpNames;
+
+            formatConfig = new Formatter.FormatConfig();
+            SetFormatConfigValues(ref formatConfig);
+        }
 
         // IGenerator
         public void Configure(DisasmProject project, string workDirectory, string fileNameBase,
@@ -123,21 +152,41 @@ namespace SourceGen.AsmGen {
 
             Project = project;
             Quirks = new AssemblerQuirks();
-            if (asmVersion != null) {
-                mAsmVersion = asmVersion.Version;
-                if (mAsmVersion <= V2_17) {
-                    // cc65 v2.17: https://github.com/cc65/cc65/issues/717
-                    Quirks.BlockMoveArgsReversed = true;
-                    // cc65 v2.17: https://github.com/cc65/cc65/issues/754
-                    Quirks.NoPcRelBankWrap = true;
-                }
-            }
 
             mWorkDirectory = workDirectory;
             mFileNameBase = fileNameBase;
             Settings = settings;
 
             mLongLabelNewLine = Settings.GetBool(AppSettings.SRCGEN_LONG_LABEL_NEW_LINE, false);
+
+            AssemblerConfig config = AssemblerConfig.GetConfig(settings,
+                AssemblerInfo.Id.Tass64);
+            mColumnWidths = (int[])config.ColumnWidths.Clone();
+        }
+
+        /// <summary>
+        /// Configures the assembler-specific format items.
+        /// </summary>
+        private void SetFormatConfigValues(ref Formatter.FormatConfig config) {
+            // Must be lower case when --case-sensitive is used.
+            config.mUpperOpcodes = false;
+            config.mUpperPseudoOpcodes = false;
+            config.mUpperOperandA = false;
+            config.mUpperOperandS = false;
+            config.mUpperOperandXY = false;
+
+            config.mBankSelectBackQuote = true;
+
+            config.mForceAbsOpcodeSuffix = string.Empty;
+            config.mForceLongOpcodeSuffix = string.Empty;
+            config.mForceDirectOperandPrefix = string.Empty;
+            config.mForceAbsOperandPrefix = "@w";       // word
+            config.mForceLongOperandPrefix = "@l";      // long
+            config.mEndOfLineCommentDelimiter = ";";
+            config.mFullLineCommentDelimiterBase = ";";
+            config.mBoxLineCommentDelimiter = ";";
+            config.mAllowHighAsciiCharConst = false;
+            config.mExpressionMode = Formatter.FormatConfig.ExpressionMode.Common;
         }
 
         // IGenerator
@@ -150,15 +199,7 @@ namespace SourceGen.AsmGen {
 
             Formatter.FormatConfig config = new Formatter.FormatConfig();
             GenCommon.ConfigureFormatterFromSettings(Settings, ref config);
-            config.mForceAbsOpcodeSuffix = string.Empty;
-            config.mForceLongOpcodeSuffix = string.Empty;
-            config.mForceAbsOperandPrefix = "a:";       // absolute
-            config.mForceLongOperandPrefix = "f:";      // far
-            config.mEndOfLineCommentDelimiter = ";";
-            config.mFullLineCommentDelimiterBase = ";";
-            config.mBoxLineCommentDelimiter = ";";
-            config.mAllowHighAsciiCharConst = false;
-            config.mExpressionMode = Formatter.FormatConfig.ExpressionMode.Simple;
+            SetFormatConfigValues(ref config);
             SourceFormatter = new Formatter(config);
 
             string msg = string.Format(Properties.Resources.PROGRESS_GENERATING_FMT, pathName);
@@ -166,26 +207,27 @@ namespace SourceGen.AsmGen {
 
             mLocalizer = new LabelLocalizer(Project);
             if (!Settings.GetBool(AppSettings.SRCGEN_DISABLE_LABEL_LOCALIZATION, false)) {
-                mLocalizer.LocalPrefix = "@";
+                mLocalizer.LocalPrefix = "_";
                 mLocalizer.Analyze();
             }
+            mLocalizer.MaskLeadingUnderscores();
 
             // Use UTF-8 encoding, without a byte-order mark.
             using (StreamWriter sw = new StreamWriter(pathName, false, new UTF8Encoding(false))) {
                 mOutStream = sw;
 
                 if (Settings.GetBool(AppSettings.SRCGEN_ADD_IDENT_COMMENT, false)) {
-                    if (mAsmVersion.IsValid && mAsmVersion <= V2_17) {
-                        OutputLine(SourceFormatter.FullLineCommentDelimiter +
-                            string.Format(Properties.Resources.GENERATED_FOR_VERSION,
-                            "cc65", mAsmVersion.ToString()));
-                    } else {
-                        OutputLine(SourceFormatter.FullLineCommentDelimiter +
-                            string.Format(Properties.Resources.GENERATED_FOR_LATEST, "cc65"));
-                    }
+                    OutputLine(SourceFormatter.FullLineCommentDelimiter +
+                        string.Format(Properties.Resources.GENERATED_FOR_VERSION,
+                        "64tass", V1_53, AsmTass64.OPTIONS));
                 }
 
                 GenCommon.Generate(this, sw, worker);
+
+                if (mNeedHereOp) {
+                    OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(HERE_PSEUDO_OP),
+                        string.Empty, string.Empty);
+                }
             }
             mOutStream = null;
 
@@ -199,67 +241,47 @@ namespace SourceGen.AsmGen {
             if (cpuDef.Type == CpuDef.CpuType.Cpu65816) {
                 cpuStr = "65816";
             } else if (cpuDef.Type == CpuDef.CpuType.Cpu65C02) {
-                cpuStr = "65C02";
+                cpuStr = "65c02";
             } else if (cpuDef.Type == CpuDef.CpuType.Cpu6502 && cpuDef.HasUndocumented) {
-                cpuStr = "6502X";
+                cpuStr = "6502i";
             } else {
                 cpuStr = "6502";
             }
 
-            OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(".setcpu"),
+            OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(".cpu"),
                 '\"' + cpuStr + '\"', string.Empty);
         }
 
-        /// <summary>
-        /// Map the mnemonics we chose for undocumented opcodes to the cc65 mnemonics.
-        /// 
-        /// We don't include the double- and triple-byte NOPs here, as cc65 doesn't
-        /// appear to have a definition for them (as of 2.17).
-        /// </summary>
-        private static Dictionary<string, string> sUndocMap = new Dictionary<string, string>() {
-            { OpName.ASR, "alr" },      // imm 0x4b
-            { OpName.ANC, "anc" },      // imm 0x0b (and others)
-            { OpName.ANE, "ane" },      // imm 0x8b
-            { OpName.ARR, "arr" },      // imm 0x6b
-            { OpName.SBX, "axs" },      // imm 0xcb
-            { OpName.DCP, "dcp" },      // abs 0xcf
-            { OpName.ISB, "isc" },      // abs 0xef
-            { OpName.HLT, "jam" },      // abs 0x02 (and others)
-            { OpName.LAE, "las" },      // abs,y 0xbb
-            { OpName.LXA, "lax" },      // imm 0xab
-            { OpName.RLA, "rla" },      // abs 0x2f
-            { OpName.RRA, "rra" },      // abs 0x6f
-            { OpName.SAX, "sax" },      // abs 0x8f
-            { OpName.SHA, "sha" },      // abs,y 0x9f
-            { OpName.SHX, "shx" },      // abs,y 0x9e
-            { OpName.SHY, "shy" },      // abs,x 0x9c
-            { OpName.SLO, "slo" },      // abs 0x0f
-            { OpName.SRE, "sre" },      // abs 0x4f
-            { OpName.SHS, "tas" },      // abs,y 0x9b
-        };
-
         // IGenerator
-        public string ReplaceMnemonic(OpDef op) {
-            if ((op == OpDef.OpWDM_WDM || op == OpDef.OpBRK_StackInt) && mAsmVersion <= V2_17) {
-                // cc65 v2.17 doesn't support WDM, and assembles BRK <arg> to opcode $05.
-                // https://github.com/cc65/cc65/issues/715
-                // https://github.com/cc65/cc65/issues/716
-                return null;
-            } else if (op.IsUndocumented) {
-                if (sUndocMap.TryGetValue(op.Mnemonic, out string newValue)) {
-                    if ((op.Mnemonic == OpName.ANC && op.Opcode != 0x0b) ||
-                            (op.Mnemonic == OpName.HLT && op.Opcode != 0x02)) {
-                        // There are multiple opcodes for the same thing.  cc65 outputs
-                        // one specific thing, so we need to match that, and just do a hex
-                        // dump for the others.
-                        return null;
-                    }
-                    return newValue;
+        public string ModifyOpcode(int offset, OpDef op) {
+            if (op.IsUndocumented) {
+                if (Project.CpuDef.Type == CpuDef.CpuType.Cpu65C02) {
+                    // none of the "LDD" stuff is handled
+                    return null;
                 }
-                return null;
-            } else {
-                return string.Empty;
+                if ((op.Mnemonic == OpName.ANC && op.Opcode != 0x0b) ||
+                        (op.Mnemonic == OpName.JAM && op.Opcode != 0x02)) {
+                    // There are multiple opcodes that match the mnemonic.  Output the
+                    // mnemonic for the first one and hex for the rest.
+                    return null;
+                } else if (op.Mnemonic == OpName.NOP || op.Mnemonic == OpName.DOP ||
+                        op.Mnemonic == OpName.TOP) {
+                    // the various undocumented no-ops aren't handled
+                    return null;
+                } else if (op.Mnemonic == OpName.SBC) {
+                    // this is the alternate reference to SBC
+                    return null;
+                } else if (op == OpDef.OpSHA_DPIndIndexY) {
+                    // not recognized ($93)
+                    return null;
+                }
             }
+            if (op == OpDef.OpBRK_StackInt || op == OpDef.OpCOP_StackInt ||
+                    op == OpDef.OpWDM_WDM) {
+                // 64tass doesn't like these to have an operand.  Output as hex.
+                return null;
+            }
+            return string.Empty;        // indicate original is fine
         }
 
         // IGenerator
@@ -314,7 +336,8 @@ namespace SourceGen.AsmGen {
                     opcodeStr = sDataOpNames.GetDefineData(length);
                     operand = RawData.GetWord(data, offset, length, false);
                     operandStr = PseudoOp.FormatNumericOperand(formatter, Project.SymbolTable,
-                        mLocalizer.LabelMap, dfd, operand, length, false);
+                        mLocalizer.LabelMap, dfd, operand, length,
+                        PseudoOp.FormatNumericOpFlags.None);
                     break;
                 case FormatDescriptor.Type.NumericBE:
                     opcodeStr = sDataOpNames.GetDefineBigData(length);
@@ -324,7 +347,8 @@ namespace SourceGen.AsmGen {
                     } else {
                         operand = RawData.GetWord(data, offset, length, true);
                         operandStr = PseudoOp.FormatNumericOperand(formatter, Project.SymbolTable,
-                            mLocalizer.LabelMap, dfd, operand, length, false);
+                            mLocalizer.LabelMap, dfd, operand, length,
+                            PseudoOp.FormatNumericOpFlags.None);
                     }
                     break;
                 case FormatDescriptor.Type.Fill:
@@ -412,20 +436,40 @@ namespace SourceGen.AsmGen {
         }
 
         // IGenerator
-        public void OutputOrgDirective(int address) {
-            OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(sDataOpNames.OrgDirective),
-                SourceFormatter.FormatHexValue(address, 4), string.Empty);
+        public void OutputOrgDirective(int offset, int address) {
+            // 64tass separates the "compile offset", which determines where the output fits
+            // into the generated binary, and "program counter", which determines the code
+            // the assembler generates.  Since we need to explicitly specify every byte in
+            // the output file, the compile offset isn't very useful.  We want to set it once
+            // before the first line of code, then leave it alone.
+            //
+            // Any subsequent ORG changes are made to the program counter, and take the form
+            // of a pair of ops (.logical <addr> to open, .here to end).  Omitting the .here
+            // causes an error.
+            if (offset == 0) {
+                // Set the "compile offset" to the initial address.
+                OutputLine("*", "=", SourceFormatter.FormatHexValue(Project.AddrMap.Get(0), 4),
+                    string.Empty);
+            } else {
+                if (mNeedHereOp) {
+                    OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(HERE_PSEUDO_OP),
+                        string.Empty, string.Empty);
+                }
+                OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(sDataOpNames.OrgDirective),
+                    SourceFormatter.FormatHexValue(address, 4), string.Empty);
+                mNeedHereOp = true;
+            }
         }
 
         // IGenerator
         public void OutputRegWidthDirective(int offset, int prevM, int prevX, int newM, int newX) {
             if (prevM != newM) {
-                string mop = (newM == 0) ? ".a16" : ".a8";
+                string mop = (newM == 0) ? ".al" : ".as";
                 OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(mop),
                     string.Empty, string.Empty);
             }
             if (prevX != newX) {
-                string xop = (newX == 0) ? ".i16" : ".i8";
+                string xop = (newX == 0) ? ".xl" : ".xs";
                 OutputLine(string.Empty, SourceFormatter.FormatPseudoOp(xop),
                     string.Empty, string.Empty);
             }
@@ -438,25 +482,22 @@ namespace SourceGen.AsmGen {
 
         // IGenerator
         public void OutputLine(string label, string opcode, string operand, string comment) {
-            // If a label is provided, and it doesn't start with a '.' (indicating that it's
-            // a directive), and this isn't an EQU directive, add a ':'.  Might be easier to
-            // just ".feature labels_without_colons", but I'm trying to do things the way
-            // that cc65 users will expect.
-            if (!string.IsNullOrEmpty(label) && label[0] != '.' &&
-                    !String.Equals(opcode, sDataOpNames.EquDirective,
+            // Break the line if the label is long and it's not a .EQ directive.
+            if (!string.IsNullOrEmpty(label) &&
+                    !string.Equals(opcode, sDataOpNames.EquDirective,
                         StringComparison.InvariantCultureIgnoreCase)) {
-                label += ':';
 
-                if (mLongLabelNewLine && label.Length >= 9) {
+                if (mLongLabelNewLine && label.Length >= mColumnWidths[0]) {
                     mOutStream.WriteLine(label);
                     label = string.Empty;
                 }
             }
 
             mLineBuilder.Clear();
-            TextUtil.AppendPaddedString(mLineBuilder, label, 9);
-            TextUtil.AppendPaddedString(mLineBuilder, opcode, 9 + 8);
-            TextUtil.AppendPaddedString(mLineBuilder, operand, 9 + 8 + 11);
+            TextUtil.AppendPaddedString(mLineBuilder, label, mColumnWidths[0]);
+            TextUtil.AppendPaddedString(mLineBuilder, opcode, mColumnWidths[0] + mColumnWidths[1]);
+            TextUtil.AppendPaddedString(mLineBuilder, operand,
+                mColumnWidths[0] + mColumnWidths[1] + mColumnWidths[2]);
             if (string.IsNullOrEmpty(comment)) {
                 // Trim trailing spaces off of opcode or operand.  If they want trailing
                 // spaces at the end of a comment, that's fine.
@@ -469,22 +510,15 @@ namespace SourceGen.AsmGen {
         }
 
         private void OutputString(int offset, string labelStr, string commentStr) {
-            // Normal ASCII strings are straightforward: they're just part of a .byte
-            // directive, and can mix with anything else in the .byte.
+            // Normal ASCII strings are handled with a simple .text directive.
             //
-            // For CString we can use .asciiz, but only if the string fits on one line
-            // and doesn't include delimiters.  For L8String and L16String we can
-            // define simple macros, but their use has a similar restriction.  High-ASCII
-            // strings also require a macro.
+            // CString and L8String have directives (.null, .ptext), but we can only use
+            // them if the string fits on one line and doesn't include delimiters.
             //
-            // We might be able to define a macro for DCI and Reverse as well.
+            // We could probably do something fancy with the character encoding options to
+            // make high-ASCII work nicely.
             //
-            // The limitation on strings with delimiters arises because (1) I don't see a
-            // way to escape them within a string, and (2) the simple macro workarounds
-            // only take a single argument, not a comma-separated list of stuff.
-            //
-            // Some ideas here:
-            // https://groups.google.com/forum/#!topic/comp.sys.apple2.programmer/5Wkw8mUPcU0
+            // We might be able to define a macro for DCI and Reverse.
 
             Formatter formatter = SourceFormatter;
             byte[] data = Project.FileData;
@@ -559,29 +593,12 @@ namespace SourceGen.AsmGen {
 
             switch (dfd.FormatSubType) {
                 case FormatDescriptor.SubType.None:
-                    // Special case for simple short high-ASCII strings.  These have no
-                    // leading or trailing bytes.  We can improve this a bit by handling
-                    // arbitrarily long strings by simply breaking them across lines.
-                    Debug.Assert(leadingBytes == 0);
-                    Debug.Assert(trailingBytes == 0);
-                    if (highAscii && gath.NumLinesOutput == 1 && !gath.HasDelimiter) {
-                        if (!mHighAsciiMacroOutput) {
-                            mHighAsciiMacroOutput = true;
-                            // Output a macro for high-ASCII strings.
-                            OutputLine(".macro", "HiAscii", "Arg", string.Empty);
-                            OutputLine(string.Empty, ".repeat", ".strlen(Arg), I", string.Empty);
-                            OutputLine(string.Empty, ".byte", ".strat(Arg, I) | $80", string.Empty);
-                            OutputLine(string.Empty, ".endrep", string.Empty, string.Empty);
-                            OutputLine(".endmacro", string.Empty, string.Empty, string.Empty);
-                        }
-                        opcodeStr = formatter.FormatPseudoOp("HiAscii");
-                        highAscii = false;
-                    }
+                    // TODO(someday): something fancy with encodings to handle high-ASCII text?
                     break;
                 case FormatDescriptor.SubType.Dci:
                 case FormatDescriptor.SubType.Reverse:
                 case FormatDescriptor.SubType.DciReverse:
-                    // Full configured above.
+                    // Fully configured above.
                     break;
                 case FormatDescriptor.SubType.CString:
                     if (gath.NumLinesOutput == 1 && !gath.HasDelimiter) {
@@ -590,8 +607,13 @@ namespace SourceGen.AsmGen {
                     }
                     break;
                 case FormatDescriptor.SubType.L8String:
+                    if (gath.NumLinesOutput == 1 && !gath.HasDelimiter) {
+                        opcodeStr = sDataOpNames.StrLen8;
+                        showLeading = false;
+                    }
+                    break;
                 case FormatDescriptor.SubType.L16String:
-                    // Implement macros?
+                    // Implement as macro?
                     break;
                 default:
                     Debug.Assert(false);
@@ -634,4 +656,123 @@ namespace SourceGen.AsmGen {
             gath.Finish();
         }
     }
+
+    #endregion IGenerator
+
+
+    #region IAssembler
+
+    /// <summary>
+    /// Cross-assembler execution interface.
+    /// </summary>
+    public class AsmTass64 : IAssembler {
+        public const string OPTIONS = "--case-sensitive --nostart --long-address -Wall";
+
+        // Paths from generator.
+        private List<string> mPathNames;
+
+        // Directory to make current before executing assembler.
+        private string mWorkDirectory;
+
+
+        // IAssembler
+        public void GetExeIdentifiers(out string humanName, out string exeName) {
+            humanName = "64tass Assembler";
+            exeName = "64tass";
+        }
+
+        // IAssembler
+        public AssemblerConfig GetDefaultConfig() {
+            return new AssemblerConfig(string.Empty, new int[] { 8, 8, 11, 73 });
+        }
+
+        // IAssembler
+        public AssemblerVersion QueryVersion() {
+            AssemblerConfig config =
+                AssemblerConfig.GetConfig(AppSettings.Global, AssemblerInfo.Id.Tass64);
+            if (config == null || string.IsNullOrEmpty(config.ExecutablePath)) {
+                return null;
+            }
+
+            ShellCommand cmd = new ShellCommand(config.ExecutablePath, "--version",
+                Directory.GetCurrentDirectory(), null);
+            cmd.Execute();
+            if (string.IsNullOrEmpty(cmd.Stdout)) {
+                return null;
+            }
+
+            // Windows - Stdout: "64tass Turbo Assembler Macro V1.53.1515\r\n"
+            // Linux - Stdout:   "64tass Turbo Assembler Macro V1.53.1515?\n"
+
+            const string PREFIX = "Macro V";
+            string str = cmd.Stdout;
+            int start = str.IndexOf(PREFIX);
+            int end = (start < 0) ? -1 : str.IndexOfAny(new char[] { '?', '\r', '\n' }, start + 1);
+
+            if (start < 0 || end < 0 || start + PREFIX.Length >= end) {
+                Debug.WriteLine("Couldn't find version in " + str);
+                return null;
+            }
+            start += PREFIX.Length;
+            string versionStr = str.Substring(start, end - start);
+            CommonUtil.Version version = CommonUtil.Version.Parse(versionStr);
+            if (!version.IsValid) {
+                return null;
+            }
+            return new AssemblerVersion(versionStr, version);
+        }
+
+        // IAssembler
+        public void Configure(List<string> pathNames, string workDirectory) {
+            // Clone pathNames, in case the caller decides to modify the original.
+            mPathNames = new List<string>(pathNames.Count);
+            foreach (string str in pathNames) {
+                mPathNames.Add(str);
+            }
+
+            mWorkDirectory = workDirectory;
+        }
+
+        // IAssembler
+        public AssemblerResults RunAssembler(BackgroundWorker worker) {
+            // Reduce input file to a partial path if possible.  This is really just to make
+            // what we display to the user a little easier to read.
+            string pathName = mPathNames[0];
+            if (pathName.StartsWith(mWorkDirectory)) {
+                pathName = pathName.Remove(0, mWorkDirectory.Length + 1);
+            } else {
+                // Unexpected, but shouldn't be a problem.
+                Debug.WriteLine("NOTE: source file is not in work directory");
+            }
+
+            AssemblerConfig config =
+                AssemblerConfig.GetConfig(AppSettings.Global, AssemblerInfo.Id.Tass64);
+            if (string.IsNullOrEmpty(config.ExecutablePath)) {
+                Debug.WriteLine("Assembler not configured");
+                return null;
+            }
+
+            worker.ReportProgress(0, Properties.Resources.PROGRESS_ASSEMBLING);
+
+            string outFileName = pathName.Substring(0, pathName.Length - 2);
+
+            // Wrap pathname in quotes in case it has spaces.
+            // (Do we need to shell-escape quotes in the pathName?)
+            ShellCommand cmd = new ShellCommand(config.ExecutablePath,
+                OPTIONS + " \"" + pathName + "\"" + " -o \"" + outFileName + "\"",
+                mWorkDirectory, null);
+            cmd.Execute();
+
+            // Can't really do anything with a "cancel" request.
+
+            // Output filename is the input filename without the ".S".  Since the filename
+            // was generated by us we can be confident in the format.
+            string outputFile = mPathNames[0].Substring(0, mPathNames[0].Length - 2);
+
+            return new AssemblerResults(cmd.FullCommandLine, cmd.ExitCode, cmd.Stdout,
+                cmd.Stderr, outputFile);
+        }
+    }
+
+    #endregion IAssembler
 }

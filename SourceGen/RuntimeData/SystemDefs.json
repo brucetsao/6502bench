@@ -137,6 +137,20 @@
       }
     },
     {
+      "Name" : "Atari Lynx",
+      "GroupName" : "Atari",
+      "Cpu" : "65SC02",
+      "Speed" : "4",
+      "Description" : "Atari Lynx handheld game console.",
+      "SymbolFiles" : [
+        "RT:Atari/Lynx.sym65"
+      ],
+      "ExtensionScripts" : [
+      ],
+      "Parameters" : {
+      }
+    },
+    {
       "Name" : "Atari Arcade Cabinet",
       "GroupName" : "Atari",
       "Cpu" : "6502",
@@ -150,12 +164,28 @@
       }
     },
     {
-      "Name" : "Commodore 64",
+      "Name" : "Commodore 64 (PRG)",
       "GroupName" : "Commodore",
       "Cpu" : "6510",
       "Speed" : "1.023",
-      "Description" : "Commodore 64 [placeholder].",
+      "Description" : "Commodore 64 home computer.  The first two bytes hold the load address.",
       "SymbolFiles" : [
+        "RT:Commodore/C64-Kernal.sym65"
+      ],
+      "ExtensionScripts" : [
+      ],
+      "Parameters" : {
+        "first-word-is-load-addr":"true"
+      }
+    },
+    {
+      "Name" : "Commodore 64 (BIN)",
+      "GroupName" : "Commodore",
+      "Cpu" : "6510",
+      "Speed" : "1.023",
+      "Description" : "Commodore 64 home computer.  General binary file.",
+      "SymbolFiles" : [
+        "RT:Commodore/C64-Kernal.sym65"
       ],
       "ExtensionScripts" : [
       ],
@@ -167,8 +197,10 @@
       "GroupName" : "Commodore",
       "Cpu" : "8502",
       "Speed" : "2",
-      "Description" : "Commodore 128 [placeholder].",
+      "Description" : "Commodore 128 home computer.",
       "SymbolFiles" : [
+        "RT:Commodore/C64-Kernal.sym65",
+        "RT:Commodore/C128-Kernal.sym65"
       ],
       "ExtensionScripts" : [
       ],

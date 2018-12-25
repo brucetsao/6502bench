@@ -9,14 +9,14 @@
 </head>
 
 <body>
-<div id=content>
+<div id="content">
 <h1>6502bench SourceGen: Code Generation &amp; Assembly</h1>
 <p><a href="index.html">Back to index</a></p>
 
 <p>SourceGen can generate an assembly source file that, when fed into
 the target assembler, will recreate the original data file exactly.
-Every assembler is different, so code must be written especially for
-each.<p>
+Every assembler is different, so support must be added to SourceGen
+for each.</p>
 <p>The generation / assembly dialog can be opened with File &gt; Assemble.</p>
 
 
@@ -24,6 +24,7 @@ each.<p>
 
 <p>SourceGen currently supports the following cross-assemblers:</p>
 <ul>
+  <li><a href="https://sourceforge.net/projects/tass64/">64tass</a> v1.53.1515 or later</li>
   <li><a href="https://cc65.github.io/">cc65</a> v2.17 or later</li>
   <li><a href="https://www.brutaldeluxe.fr/products/crossdevtools/merlin/">Merlin 32</a> v1.0.0 or later</li>
 </ul>
@@ -37,7 +38,7 @@ assembler.  This is most easily understood with an example.</p>
 <code>54 02 01</code>, with the arguments reversed.  cc65 v2.17 doesn't
 do that; this is a bug that was fixed in a later version.  So if you're
 generating code for v2.17, you want to create source code with the
-arguments the other way around.</p>
+arguments the wrong way around.</p>
 <p>Having version-dependent source code is a bad idea, so SourceGen
 just outputs raw hex bytes for MVN/MVP instructions.  This yields the
 correct code for all versions of the assembler, but is ugly and
@@ -56,7 +57,7 @@ intermediaries ("file.o") or metadata ("_FileInformation.txt").  Some
 generators may produce multiple source files, perhaps a link script or
 symbol definition header to go with the assembly source.  To avoid
 spreading files across the filesystem, SourceGen does all of its work
-in the same directory where the project lives.  So before you can generate
+in the same directory where the project lives.  Before you can generate
 code, you have to have given your project a name by saving it.</p>
 
 <p>The Generate and Assemble dialog has a drop-down list near the top
@@ -65,7 +66,7 @@ will be shown with the detected version number.  If the assembler
 executable isn't configured, "[latest version]" will be shown instead
 of a version number.</p>
 <p>The Settings button will take you directly to the assembler configuration
-tab in the application settings dialog.
+tab in the application settings dialog.</p>
 <p>Hit the Generate button to generate the source code into a file on disk.
 The file will use the project name, with the ".dis65" replaced by
 "_&lt;assembler&gt;.S".</p>
@@ -98,16 +99,141 @@ command-line output will be displayed, with stdout and stderr separated.
 provides.)</p>
 
 <p>The output will show the assembler's exit code, which will be zero
-on success (note: sometimes they lie.)  If it did, SourceGen will then
-compare the assembler's output to the original file, and report any
-differences.</p>
+on success (note: sometimes they lie.)  If it appeared to succeed,
+SourceGen will then compare the assembler's output to the original file,
+and report any differences.</p>
 <p>Failures here may be due to bugs in the cross-assembler or in
 SourceGen.  However, SourceGen can generally work around assembler bugs,
-so any failure here is an opportunity for improvement.</p>
+so any failure is an opportunity for improvement.</p>
+
+
+<h2><a name="quirks">Assembler-Specific Bugs &amp; Quirks</a></h2>
+
+<p>This is a list of bugs and quirky behavior in cross-assemblers that
+SourceGen works around when generating code.</p>
+<p>Every assembler seems to have a different way of dealing with expressions.
+Most of them will let you group expressions with parenthesis, but that
+doesn't always help.  For example, <code>PEA label >> 8 + 1</code> is
+perfectly valid, but writing <code>PEA (label >> 8) + 1</code> will cause
+most assemblers to assume you're trying to use an alterate form of PEA
+with indirect addressing (which doesn't exist).  The code generator needs
+to understand expression syntax and operator precedence to generate correct
+code, but also needs to know how to handle the corner cases.</p>
+
+
+<h3><a name="64tass">64tass</a></h3>
+
+<p>Code is generated for 64tass v1.53.1515.</p>
+
+<p>Bugs:</p>
+<ul>
+  <li>Undocumented opcodes: <code>SHA (ZP),Y</code> ($93) is not supported;
+    the assembler appears to be expecting <code>SHA ABS,X</code> instead.</li>
+  <li>BRK, COP, and WDM are not allowed to have operands.</li>
+</ul>
+
+<p>Quirks:</p>
+<ul>
+  <li>The underscore character ('_') is allowed as a character in labels,
+    but when used as the first character in a label it indicates the
+    label is local.  If you create labels with leading underscores that
+    are not local, the labels must be altered to start with some other
+    character, and made unique.</li>
+  <li>Labels starting with two underscores are "reserved".  Trying to
+    use them causes an error.</li>
+  <li>By default, 64tass sets the first two bytes of the output file to
+    the load address.  The <code>--nostart</code> flag is used to
+    suppress this.</li>
+  <li>By default, 64tass is case-insensitive, but SourceGen treats labels
+    as case-sensitive.  The <code>--case-sensitive</code> must be passed to
+    the assembler.</li>
+  <li>If you set the <code>--case-sensitive</code> flag, <b>all</b> opcodes
+    and operands must be lower-case.  Most of the SourceGen options used to
+    show things in upper case must be disabled.</li>
+  <li>For 65816, selecting the bank byte is done with the back-quote ('`')
+    rather than the caret ('^').  (There's a note in the docs to the effect
+    that they plan to move to carets.)</li>
+</ul>
+
+
+<h3><a name="cc65">cc65</a></h3>
+
+<p>Code is generated for cc65 v2.27.</p>
+
+<p>Bugs:</p>
+<ul>
+  <li>The arguments to MVN/MVP are reversed.</li>
+  <li>PC relative branches don't wrap around at bank boundaries.</li>
+  <li>BRK &lt;arg&gt; is assembled to opcode $05 rather than $00.</li>
+  <li>WDM is not supported.</li>
+  <li>Source file names may not have spaces in them on Windows.</li>
+</ul>
+
+<p>Quirks:</p>
+<ul>
+  <li>Operator precedence is unusual.  Consider <code>label >> 8 - 16</code>.
+    cc65 puts shift higher than subtraction, whereas languages like C
+    and assemblers like 64tass do it the other way around.  So cc65
+    regards the expression as <code>(label >> 8) - 16</code>, while the
+    more common interpretation would be <code>label >> (8 - 16)</code>.
+    (This is actually somewhat convenient, since none of the expressions
+    SourceGen currently generates require parenthesis.)</li>
+  <li>Undocumented opcodes: SBX ($cb) uses the mnemonic AXS.  All other
+    opcodes match up with the "unintended opcodes" document.</li>
+  <li>ca65 is implemented as a single-pass assembler, so label widths
+    can't always be known in time.  For example, if you use some zero-page
+    labels, but they're defined via .ORG $0000 after the point where the
+    labels are used, the assembler will already have generated them as
+    absolute values.  Width disambiguation must be applied to operands
+    that wouldn't be ambiguous to a multi-pass assembler.</li>
+  <li>The assembler is geared toward generating relocatable code with
+    multiple segments (it is, after all, an assembler for a C compiler).
+    A linker configuration script is expected to be provided for anything
+    complex.  SourceGen generates a custom config file for each project.</li>
+</ul>
+
+
+<h3><a name="merlin32">Merlin 32</a></h3>
+
+<p>Code is generated for Merlin 32 v1.0.</p>
+
+<p>Bugs:</p>
+<ul>
+  <li>PC relative branches don't wrap around at bank boundaries.</li>
+  <li>For some failures, an exit code of zero is returned.</li>
+  <li>Some DP indexed store instructions cause errors if the label isn't
+    unambiguously DP (e.g. <code>STX $00,X</code> vs.
+    <code>STX $0000,X</code>).  This isn't a problem with project/platform
+    symbols, which are output as two-digit hex values when possible, but
+    causes failures when direct page locations are included in the project
+    and given labels.</li>
+  <li>The check for 64KiB overflow appears to happen before instructions
+    that might be absolute or direct page are resolved and reduced in size.
+    This makes it unlikely that a full 64KiB bank of code can be
+    assembled.</li>
+</ul>
+
+<p>Quirks:</p>
+<ul>
+  <li>Operator precedence is unusual.  Expressions are generally processed
+    from left to right.  The byte-selection operators have a lower
+    precedence than all of the others, and so are always processed last.</li>
+  <li>The byte selection operators  ('&lt;', '&gt;', '^') are actually
+    word-selection operators, yielding 16-bit values when wide registers
+    are enabled on the 65816.</li>
+  <li>Values loaded into registers are implicitly mod 256 or 65536.  There
+    is no need to explicitly mask an expression.</li>
+  <li>The assembler tracks register widths when it sees SEP/REP instructions,
+    but doesn't attempt to track the emulation flag.  So if you issue a REP
+    while in emulation mode, the assembler will incorrectly assume long
+    registers.  (Really I just want to be able to turn the width-tracking
+    off, but there's no way to do that.)</li>
+  <li>Non-unique local labels should cause an error, but don't.</li>
+</ul>
 
 </div>
 
-<div id=footer>
+<div id="footer">
 <p><a href="index.html">Back to index</a></p>
 </div>
 </body>

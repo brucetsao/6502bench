@@ -18,8 +18,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
-using System.Text;
 using System.Windows.Forms;
+
+using AssemblerInfo = SourceGen.AsmGen.AssemblerInfo;
+using AssemblerConfig = SourceGen.AsmGen.AssemblerConfig;
+using ExpressionMode = Asm65.Formatter.FormatConfig.ExpressionMode;
 
 namespace SourceGen.AppForms {
     public partial class EditAppSettings : Form {
@@ -28,9 +31,9 @@ namespace SourceGen.AppForms {
         /// </summary>
         public enum Tab {
             Unknown = -1,
-            CodeList = 0,
-            Assembler = 1,
-            AsmFormat = 2,
+            CodeView = 0,
+            AsmConfig = 1,
+            DisplayFOrmat = 2,
             PseudoOp = 3
         }
 
@@ -57,12 +60,19 @@ namespace SourceGen.AppForms {
         /// </summary>
         private Tab mInitialTab;
 
+        /// <summary>
+        /// Assembler to initially select in combo boxes.
+        /// </summary>
+        private AssemblerInfo.Id mInitialAsmId;
+
         // Map buttons to column show/hide buttons.
         private const int NUM_COLUMNS = ProjectView.CodeListColumnWidths.NUM_COLUMNS;
         private string[] mColumnFormats = new string[NUM_COLUMNS];
         private Button[] mColButtons;
 
-        // Map pseudo-op text entry fields to PseudoOpName properties.
+        /// <summary>
+        /// Map pseudo-op text entry fields to PseudoOpName properties.
+        /// </summary>
         private struct TextBoxPropertyMap {
             public TextBox TextBox { get; private set; }
             public PropertyInfo PropInfo { get; private set; }
@@ -74,24 +84,63 @@ namespace SourceGen.AppForms {
         }
         private TextBoxPropertyMap[] mPseudoNameMap;
 
+        /// <summary>
+        /// Holds an item for the assembler-selection combox box.
+        /// </summary>
+        private class AsmComboItem {
+            // Enumerated ID.
+            public AssemblerInfo.Id AssemblerId { get; private set; }
 
-        public EditAppSettings(ProjectView projectView, Tab initialTab) {
+            // Human-readable name for display.
+            public string Name { get; private set; }
+
+            public AsmComboItem(AssemblerInfo info) {
+                AssemblerId = info.AssemblerId;
+                Name = info.Name;
+            }
+        }
+
+        /// <summary>
+        /// Holds an item for the expression style selection combo box.
+        /// </summary>
+        private struct ExpressionStyleItem {
+            // Enumerated mode.
+            public ExpressionMode ExpMode { get; private set; }
+
+            // Human-readable name for display.
+            public string Name { get; private set; }
+
+            public ExpressionStyleItem(ExpressionMode expMode, string name) {
+                ExpMode = expMode;
+                Name = name;
+            }
+        }
+        private static ExpressionStyleItem[] sExpStyleItems = new ExpressionStyleItem[] {
+            new ExpressionStyleItem(ExpressionMode.Common, "Common"),
+            new ExpressionStyleItem(ExpressionMode.Cc65, "cc65"),
+            new ExpressionStyleItem(ExpressionMode.Merlin, "Merlin"),
+        };
+
+
+        public EditAppSettings(ProjectView projectView, Tab initialTab,
+                AssemblerInfo.Id initialAsmId) {
             InitializeComponent();
 
             mProjectView = projectView;
             mInitialTab = initialTab;
+            mInitialAsmId = initialAsmId;
 
             // Make a work copy, so we can discard changes if the user cancels out of the dialog.
-            projectView.SaveCodeListColumnWidths();
+            projectView.SerializeCodeListColumnWidths();
             mSettings = AppSettings.Global.GetCopy();
 
-            // Put buttons in an array.
+            // Put column-width buttons in an array.
             mColButtons = new Button[] {
                 showCol0, showCol1, showCol2, showCol3, showCol4,
                 showCol5, showCol6, showCol7, showCol8 };
             Debug.Assert(NUM_COLUMNS == 9);
 
-            // Extract formats from button labels.
+            // Extract formats from column-width button labels.
             for (int i = 0; i < NUM_COLUMNS; i++) {
                 mColButtons[i].Click += ColumnVisibilityButtonClick;
                 mColumnFormats[i] = mColButtons[i].Text;
@@ -122,6 +171,37 @@ namespace SourceGen.AppForms {
                 new TextBoxPropertyMap(strDciTextBox, "StrDci"),
                 new TextBoxPropertyMap(strDciHiTextBox, "StrDciHi"),
             };
+
+            ConfigureComboBox(asmConfigComboBox);
+            ConfigureComboBox(displayFmtQuickComboBox);
+            ConfigureComboBox(pseudoOpQuickComboBox);
+
+            expressionStyleComboBox.DisplayMember = "Name";
+            foreach (ExpressionStyleItem esi in sExpStyleItems) {
+                expressionStyleComboBox.Items.Add(esi);
+            }
+        }
+
+        private void ConfigureComboBox(ComboBox cb) {
+            // Show the Name field.
+            cb.DisplayMember = "Name";
+
+            cb.Items.Clear();
+            IEnumerator<AssemblerInfo> iter = AssemblerInfo.GetInfoEnumerator();
+            bool foundMatch = false;
+            while (iter.MoveNext()) {
+                AssemblerInfo info = iter.Current;
+                AsmComboItem item = new AsmComboItem(info);
+                cb.Items.Add(item);
+                if (item.AssemblerId == mInitialAsmId) {
+                    cb.SelectedItem = item;
+                    foundMatch = true;
+                }
+            }
+            if (!foundMatch) {
+                // Need to do this or box will show empty.
+                cb.SelectedIndex = 0;
+            }
         }
 
         private void EditAppSettings_Load(object sender, EventArgs e) {
@@ -155,13 +235,12 @@ namespace SourceGen.AppForms {
                 clipboardFormatComboBox.SelectedIndex = clipIndex;
             }
 
+            spacesBetweenBytesCheckBox.Checked =
+                mSettings.GetBool(AppSettings.FMT_SPACES_BETWEEN_BYTES, false);
             enableDebugCheckBox.Checked = mSettings.GetBool(AppSettings.DEBUG_MENU_ENABLED, false);
 
             // Assemblers.
-            cc65PathTextBox.Text =
-                mSettings.GetString(AppSettings.ASM_CC65_EXECUTABLE, string.Empty);
-            merlin32PathTextBox.Text =
-                mSettings.GetString(AppSettings.ASM_MERLIN32_EXECUTABLE, string.Empty);
+            PopulateAsmConfigItems();
             showAsmIdentCheckBox.Checked =
                 mSettings.GetBool(AppSettings.SRCGEN_ADD_IDENT_COMMENT, false);
             disableLabelLocalizationCheckBox.Checked =
@@ -185,9 +264,11 @@ namespace SourceGen.AppForms {
             PopulateWidthDisamSettings();
 
             string exprMode = mSettings.GetString(AppSettings.FMT_EXPRESSION_MODE, string.Empty);
-            useMerlinExpressions.Checked =
-                (Asm65.Formatter.FormatConfig.ParseExpressionMode(exprMode) ==
-                    Asm65.Formatter.FormatConfig.ExpressionMode.Merlin);
+            ExpressionMode mode;
+            if (!Enum.TryParse<ExpressionMode>(exprMode, out mode)) {
+                mode = ExpressionMode.Common;
+            }
+            SetExpressionStyle(mode);
 
             if (mInitialTab != Tab.Unknown) {
                 settingsTabControl.SelectTab((int)mInitialTab);
@@ -202,9 +283,6 @@ namespace SourceGen.AppForms {
         /// </summary>
         private void UpdateControls() {
             applyButton.Enabled = mDirty;
-
-            clearMerlin32Button.Enabled = !string.IsNullOrEmpty(merlin32PathTextBox.Text);
-            clearCc65Button.Enabled = !string.IsNullOrEmpty(cc65PathTextBox.Text);
         }
 
         /// <summary>
@@ -348,6 +426,12 @@ namespace SourceGen.AppForms {
             SetDirty(true);
         }
 
+        private void spacesBetweenBytesCheckBox_CheckedChanged(object sender, EventArgs e) {
+            mSettings.SetBool(AppSettings.FMT_SPACES_BETWEEN_BYTES,
+                spacesBetweenBytesCheckBox.Checked);
+            SetDirty(true);
+        }
+
         private void enableDebugCheckBox_CheckedChanged(object sender, EventArgs e) {
             mSettings.SetBool(AppSettings.DEBUG_MENU_ENABLED, enableDebugCheckBox.Checked);
             SetDirty(true);
@@ -358,41 +442,88 @@ namespace SourceGen.AppForms {
 
         #region Asm Config
 
-        private void browseCc65Button_Click(object sender, EventArgs e) {
-            string pathName = BrowseForExecutable("cc65 CL", "cl65.exe");
+        /// <summary>
+        /// Populates the UI elements from the asm config item in the settings.  If that doesn't
+        /// exist, use the default config.
+        /// </summary>
+        private void PopulateAsmConfigItems() {
+            AsmComboItem item = (AsmComboItem) asmConfigComboBox.SelectedItem;
+            AssemblerInfo.Id asmId = item.AssemblerId;
+
+            AssemblerConfig config = AssemblerConfig.GetConfig(mSettings, asmId);
+            if (config == null) {
+                AsmGen.IAssembler asm = AssemblerInfo.GetAssembler(asmId);
+                config = asm.GetDefaultConfig();
+            }
+
+            asmExePathTextBox.Text = config.ExecutablePath;
+            asmLabelColWidthTextBox.Text = config.ColumnWidths[0].ToString();
+            asmOpcodeColWidthTextBox.Text = config.ColumnWidths[1].ToString();
+            asmOperandColWidthTextBox.Text = config.ColumnWidths[2].ToString();
+            asmCommentColWidthTextBox.Text = config.ColumnWidths[3].ToString();
+        }
+
+        private AssemblerConfig GetAsmConfigFromUi() {
+            const int MIN_WIDTH = 1;
+            const int MAX_WIDTH = 200;
+
+            int[] widths = new int[4];
+            for (int i = 0; i < widths.Length; i++) {
+                widths[i] = MIN_WIDTH;
+            }
+
+            int result;
+            if (int.TryParse(asmLabelColWidthTextBox.Text, out result) && result >= MIN_WIDTH &&
+                    result <= MAX_WIDTH) {
+                widths[0] = result;
+            }
+            if (int.TryParse(asmOpcodeColWidthTextBox.Text, out result) && result >= MIN_WIDTH &&
+                    result <= MAX_WIDTH) {
+                widths[1] = result;
+            }
+            if (int.TryParse(asmOperandColWidthTextBox.Text, out result) && result >= MIN_WIDTH &&
+                    result <= MAX_WIDTH) {
+                widths[2] = result;
+            }
+            if (int.TryParse(asmCommentColWidthTextBox.Text, out result) && result >= MIN_WIDTH &&
+                    result <= MAX_WIDTH) {
+                widths[3] = result;
+            }
+
+            return new AssemblerConfig(asmExePathTextBox.Text, widths);
+        }
+
+        private void asmConfigComboBox_SelectedIndexChanged(object sender, EventArgs e) {
+            // They're switching to a different asm config.  Changing the boxes will cause
+            // the dirty flag to be raised, which isn't right, so we save/restore it.
+            bool oldDirty = mDirty;
+            PopulateAsmConfigItems();
+            SetDirty(oldDirty);
+        }
+
+        private void asmExeBrowseButton_Click(object sender, EventArgs e) {
+            AsmComboItem item = (AsmComboItem)asmConfigComboBox.SelectedItem;
+            AssemblerInfo.Id asmId = item.AssemblerId;
+
+            // Figure out what we're looking for.  For example, cc65 needs "cl65".
+            AsmGen.IAssembler asm = AssemblerInfo.GetAssembler(asmId);
+            asm.GetExeIdentifiers(out string humanName, out string exeName);
+
+            // Ask the user to find it.
+            string pathName = BrowseForExecutable(humanName, exeName);
             if (pathName != null) {
-                cc65PathTextBox.Text = pathName;
-                mSettings.SetString(AppSettings.ASM_CC65_EXECUTABLE, pathName);
+                asmExePathTextBox.Text = pathName;
+                AssemblerConfig.SetConfig(mSettings, asmId, GetAsmConfigFromUi());
+                SetDirty(true);
             }
         }
 
-        private void cc65PathTextBox_TextChanged(object sender, EventArgs e) {
-            mSettings.SetString(AppSettings.ASM_CC65_EXECUTABLE, cc65PathTextBox.Text);
-            SetDirty(true);
-        }
-
-        private void clearCc65Button_Click(object sender, EventArgs e) {
-            cc65PathTextBox.Text = string.Empty;
-            mSettings.SetString(AppSettings.ASM_CC65_EXECUTABLE, null);
-            SetDirty(true);
-        }
-
-        private void browseMerlin32Button_Click(object sender, EventArgs e) {
-            string pathName = BrowseForExecutable("Merlin Assembler", "Merlin32.exe");
-            if (pathName != null) {
-                merlin32PathTextBox.Text = pathName;
-                mSettings.SetString(AppSettings.ASM_MERLIN32_EXECUTABLE, pathName);
-            }
-        }
-
-        private void clearMerlin32Button_Click(object sender, EventArgs e) {
-            merlin32PathTextBox.Text = string.Empty;
-            mSettings.SetString(AppSettings.ASM_MERLIN32_EXECUTABLE, null);
-            SetDirty(true);
-        }
-
-        private void merlin32PathTextBox_TextChanged(object sender, EventArgs e) {
-            mSettings.SetString(AppSettings.ASM_MERLIN32_EXECUTABLE, merlin32PathTextBox.Text);
+        /// <summary>
+        /// Handles a text-changed event in the executable and column width text boxes.
+        /// </summary>
+        private void AsmConfig_TextChanged(object sender, EventArgs e) {
+            AsmComboItem item = (AsmComboItem)asmConfigComboBox.SelectedItem;
+            AssemblerConfig.SetConfig(mSettings, item.AssemblerId, GetAsmConfigFromUi());
             SetDirty(true);
         }
 
@@ -405,17 +536,33 @@ namespace SourceGen.AppForms {
         private string BrowseForExecutable(string prefix, string name) {
             string pathName = null;
 
-            OpenFileDialog dlg = new OpenFileDialog();
-            dlg.FileName = name;
-            dlg.Filter = prefix + "|" + name;
-            dlg.RestoreDirectory = true;
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT) {
+                name += ".exe";
+            }
+
+            OpenFileDialog dlg = new OpenFileDialog() {
+                FileName = name,
+                Filter = prefix + "|" + name,
+                RestoreDirectory = true
+            };
             if (dlg.ShowDialog() != DialogResult.Cancel) {
                 pathName = dlg.FileName;
-                SetDirty(true);
             }
             dlg.Dispose();
 
             return pathName;
+        }
+
+        private void showCycleCountsCheckBox_CheckedChanged(object sender, EventArgs e) {
+            mSettings.SetBool(AppSettings.SRCGEN_SHOW_CYCLE_COUNTS,
+                showCycleCountsCheckBox.Checked);
+            SetDirty(true);
+        }
+
+        private void longLabelNewLineCheckBox_CheckedChanged(object sender, EventArgs e) {
+            mSettings.SetBool(AppSettings.SRCGEN_LONG_LABEL_NEW_LINE,
+                longLabelNewLineCheckBox.Checked);
+            SetDirty(true);
         }
 
         private void showAsmIdentCheckBox_CheckedChanged(object sender, EventArgs e) {
@@ -426,18 +573,6 @@ namespace SourceGen.AppForms {
         private void disableLabelLocalizationCheckBox_CheckedChanged(object sender, EventArgs e) {
             mSettings.SetBool(AppSettings.SRCGEN_DISABLE_LABEL_LOCALIZATION,
                 disableLabelLocalizationCheckBox.Checked);
-            SetDirty(true);
-        }
-
-        private void longLabelNewLineCheckBox_CheckedChanged(object sender, EventArgs e) {
-            mSettings.SetBool(AppSettings.SRCGEN_LONG_LABEL_NEW_LINE,
-                longLabelNewLineCheckBox.Checked);
-            SetDirty(true);
-        }
-
-        private void showCycleCountsCheckBox_CheckedChanged(object sender, EventArgs e) {
-            mSettings.SetBool(AppSettings.SRCGEN_SHOW_CYCLE_COUNTS,
-                showCycleCountsCheckBox.Checked);
             SetDirty(true);
         }
 
@@ -469,7 +604,7 @@ namespace SourceGen.AppForms {
         }
 
         /// <summary>
-        /// Sets all of the width disambiguation settings.  Used for the quick-set buttons.
+        /// Sets all of the width disambiguation settings.
         /// </summary>
         private void SetWidthDisamSettings(string opcodeSuffixAbs, string opcodeSuffixLong,
                 string operandPrefixAbs, string operandPrefixLong) {
@@ -502,30 +637,44 @@ namespace SourceGen.AppForms {
             //    mSettings.GetString(AppSettings.FMT_OPERAND_PREFIX_LONG, string.Empty) + "'");
         }
 
-        private void shiftAfterAdjustCheckBox_CheckedChanged(object sender, EventArgs e) {
-            string mode = useMerlinExpressions.Checked ?
-                Asm65.Formatter.FormatConfig.ExpressionMode.Merlin.ToString() :
-                Asm65.Formatter.FormatConfig.ExpressionMode.Simple.ToString();
-            mSettings.SetString(AppSettings.FMT_EXPRESSION_MODE, mode);
+        private void SetExpressionStyle(ExpressionMode mode) {
+            foreach (ExpressionStyleItem esi in expressionStyleComboBox.Items) {
+                if (esi.ExpMode == mode) {
+                    expressionStyleComboBox.SelectedItem = esi;
+                    return;
+                }
+            }
+            Debug.Assert(false, "Expression mode " + mode + " not found");
+            expressionStyleComboBox.SelectedIndex = 0;
+        }
+
+        private void expressionStyleComboBox_SelectedIndexChanged(object sender, EventArgs e) {
+            ExpressionStyleItem esi = (ExpressionStyleItem)expressionStyleComboBox.SelectedItem;
+            mSettings.SetString(AppSettings.FMT_EXPRESSION_MODE, esi.ExpMode.ToString());
             SetDirty(true);
+        }
+
+        private void displayFmtSetButton_Click(object sender, EventArgs e) {
+            AsmComboItem item = (AsmComboItem)displayFmtQuickComboBox.SelectedItem;
+            AssemblerInfo.Id asmId = item.AssemblerId;
+            AsmGen.IGenerator gen = AssemblerInfo.GetGenerator(asmId);
+
+            PseudoOp.PseudoOpNames opNames;
+            Asm65.Formatter.FormatConfig formatConfig;
+            gen.GetDefaultDisplayFormat(out opNames, out formatConfig);
+
+            SetWidthDisamSettings(formatConfig.mForceAbsOpcodeSuffix,
+                formatConfig.mForceLongOpcodeSuffix,
+                formatConfig.mForceAbsOperandPrefix,
+                formatConfig.mForceLongOperandPrefix);
+            SetExpressionStyle(formatConfig.mExpressionMode);
+            // dirty flag set by change watchers if one or more fields have changed
         }
 
         private void quickFmtDefaultButton_Click(object sender, EventArgs e) {
             SetWidthDisamSettings(null, "l", "a:", "f:");
-            useMerlinExpressions.Checked = false;
-            // dirty flag set by change callbacks
-        }
-
-        private void quickFmtCc65Button_Click(object sender, EventArgs e) {
-            SetWidthDisamSettings(null, null, "a:", "f:");
-            useMerlinExpressions.Checked = false;
-            // dirty flag set by change callbacks
-        }
-
-        private void quickFmtMerlin32Button_Click(object sender, EventArgs e) {
-            SetWidthDisamSettings(":", "l", null, null);
-            useMerlinExpressions.Checked = true;
-            // dirty flag set by change callbacks
+            SetExpressionStyle(ExpressionMode.Common);
+            // dirty flag set by change watchers if one or more fields have changed
         }
 
         #endregion Display Format
@@ -567,49 +716,17 @@ namespace SourceGen.AppForms {
             ImportPseudoOpNames(new PseudoOp.PseudoOpNames());
         }
 
-        private void quickPseudoCc65Button_Click(object sender, EventArgs e) {
-            ImportPseudoOpNames(new PseudoOp.PseudoOpNames() {
-                EquDirective = "=",
-                OrgDirective = ".org",
-                DefineData1 = ".byte",
-                DefineData2 = ".word",
-                DefineData3 = ".faraddr",
-                DefineData4 = ".dword",
-                DefineBigData2 = ".dbyt",
-                Fill = ".res",
-                StrGeneric = ".byte",
-                StrNullTerm = ".asciiz",
-            });
-        }
+        private void pseudoOpSetButton_Click(object sender, EventArgs e) {
+            AsmComboItem item = (AsmComboItem)pseudoOpQuickComboBox.SelectedItem;
+            AssemblerInfo.Id asmId = item.AssemblerId;
+            AsmGen.IGenerator gen = AssemblerInfo.GetGenerator(asmId);
 
-        private void quickPseudoMerlin32_Click(object sender, EventArgs e) {
-            // Note this doesn't quite match up with the Merlin generator, which uses
-            // the same pseudo-op for low/high ASCII but different string delimiters.  We
-            // don't change the delimiters for the display list, so we want to tweak the
-            // opcode slightly.
-            //char hiAscii = '\u21e1';
-            char hiAscii = '\u2191';
-            ImportPseudoOpNames(new PseudoOp.PseudoOpNames() {
-                EquDirective = "equ",
-                OrgDirective = "org",
-                DefineData1 = "dfb",
-                DefineData2 = "dw",
-                DefineData3 = "adr",
-                DefineData4 = "adrl",
-                DefineBigData2 = "ddb",
-                Fill = "ds",
-                Dense = "hex",
-                StrGeneric = "asc",
-                StrGenericHi = "asc" + hiAscii,
-                StrReverse = "rev",
-                StrReverseHi = "rev" + hiAscii,
-                StrLen8 = "str",
-                StrLen8Hi = "str" + hiAscii,
-                StrLen16 = "strl",
-                StrLen16Hi = "strl" + hiAscii,
-                StrDci = "dci",
-                StrDciHi = "dci" + hiAscii,
-            });
+            PseudoOp.PseudoOpNames opNames;
+            Asm65.Formatter.FormatConfig formatConfig;
+            gen.GetDefaultDisplayFormat(out opNames, out formatConfig);
+            ImportPseudoOpNames(opNames);
+
+            // dirty flag set by change watchers if one or more fields have changed
         }
 
         #endregion Pseudo-Op

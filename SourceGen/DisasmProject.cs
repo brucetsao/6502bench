@@ -227,7 +227,8 @@ namespace SourceGen {
             mDataFileName = dataFileName;
             FileDataCrc32 = CommonUtil.CRC32.OnWholeBuffer(0, mFileData);
 
-            // Mark the first byte as code so we have something to do.
+            // Mark the first byte as code so we have something to do.  This may get
+            // overridden later.
             TypeHints[0] = CodeAnalysis.TypeHint.Code;
         }
 
@@ -241,9 +242,6 @@ namespace SourceGen {
             bool includeUndoc = Setup.SystemDefaults.GetUndocumentedOpcodes(sysDef);
             CpuDef tmpDef = CpuDef.GetBestMatch(cpuType, includeUndoc);
 
-            int loadAddr = Setup.SystemDefaults.GetLoadAddress(sysDef);
-            mAddrMap.Set(0, loadAddr);
-
             // Store the best-matched CPU in properties, rather than whichever was originally
             // requested.  This way the behavior of the project is the same for everyone, even
             // if somebody has a newer app version with specialized handling for the
@@ -253,6 +251,25 @@ namespace SourceGen {
             UpdateCpuDef();
 
             ProjectProps.EntryFlags = Setup.SystemDefaults.GetEntryFlags(sysDef);
+
+            // Configure the load address.
+            if (Setup.SystemDefaults.GetFirstWordIsLoadAddr(sysDef) && mFileData.Length > 2) {
+                // First two bytes are the load address, code starts at offset +000002.  We
+                // need to put the load address into the stream, but don't want it to get
+                // picked up as an address for something else.  So we set it to the same
+                // address as the start of the file.  The overlapping-address code should do
+                // the right thing with it.
+                int loadAddr = RawData.GetWord(mFileData, 0, 2, false);
+                mAddrMap.Set(0, loadAddr);
+                mAddrMap.Set(2, loadAddr);
+                OperandFormats[0] = FormatDescriptor.Create(2, FormatDescriptor.Type.NumericLE,
+                    FormatDescriptor.SubType.None);
+                TypeHints[0] = CodeAnalysis.TypeHint.NoHint;
+                TypeHints[2] = CodeAnalysis.TypeHint.Code;
+            } else {
+                int loadAddr = Setup.SystemDefaults.GetLoadAddress(sysDef);
+                mAddrMap.Set(0, loadAddr);
+            }
 
             foreach (string str in sysDef.SymbolFiles) {
                 ProjectProps.PlatformSymbolFileIdentifiers.Add(str);
@@ -532,10 +549,19 @@ namespace SourceGen {
                 }
 
                 if (mAnattribs[offset].IsInstructionStart) {
-                    // Check length for instruction formatters.
+                    // Check length for instruction formatters.  This can happen if you format
+                    // a bunch of bytes as single-byte data items and then add a code entry
+                    // point.
                     if (kvp.Value.Length != mAnattribs[offset].Length) {
-                        genLog.LogW("Unexpected length on instr format descriptor (" +
+                        genLog.LogW("+" + offset.ToString("x6") +
+                            ": unexpected length on instr format descriptor (" +
                             kvp.Value.Length + " vs " + mAnattribs[offset].Length + ")");
+                        continue;       // ignore this one
+                    }
+                    if (kvp.Value.Length == 1) {
+                        // No operand to format!
+                        genLog.LogW("+" + offset.ToString("x6") +
+                            ": unexpected format descriptor on single-byte op");
                         continue;       // ignore this one
                     }
                     if (!kvp.Value.IsValidForInstruction) {
@@ -544,8 +570,8 @@ namespace SourceGen {
                     }
                 } else if (mAnattribs[offset].IsInstruction) {
                     // Mid-instruction format.
-                    genLog.LogW("Unexpected mid-instruction format descriptor at +" +
-                        offset.ToString("x6"));
+                    genLog.LogW("+" + offset.ToString("x6") +
+                        ": unexpected mid-instruction format descriptor");
                     continue;       // ignore this one
                 }
 
@@ -676,11 +702,14 @@ namespace SourceGen {
                     // address map split as well, since the first byte past is an external
                     // address, and a label at the end of the current region will be offset
                     // from by this.)
-                    if (sym == null && (attr.OperandAddress & 0xffff) != 0xffff && checkNearby) {
+                    if (sym == null && (attr.OperandAddress & 0xffff) > 0 && checkNearby) {
                         sym = SymbolTable.FindAddressByValue(attr.OperandAddress - 1);
                     }
-                    // TODO(maybe): if this is a 65816, check for a symbol at addr-2, for the
-                    //   benefit of long pointers.
+                    // If that didn't work, try addr-2.  Good for 24-bit addresses and jump
+                    // vectors that start with a JMP instruction.
+                    if (sym == null && (attr.OperandAddress & 0xffff) > 1 && checkNearby) {
+                        sym = SymbolTable.FindAddressByValue(attr.OperandAddress - 2);
+                    }
                     if (sym != null) {
                         mAnattribs[offset].DataDescriptor =
                             FormatDescriptor.Create(mAnattribs[offset].Length,
@@ -1555,7 +1584,7 @@ namespace SourceGen {
         /// </summary>
         /// <param name="name">Label to find.</param>
         /// <returns>File offset associated with label, or -1 if not found.</returns>
-        public int FindLabelByName(string name) {
+        public int FindLabelOffsetByName(string name) {
             // We're interested in user labels and auto-generated labels.  Do a lookup in
             // SymbolTable to find the symbol, then if it's user or auto, we do a second
             // search to find the file offset it's associated with.  The second search
@@ -1564,10 +1593,11 @@ namespace SourceGen {
             //
             // This will not find "hidden" labels, i.e. labels that are in the middle of an
             // instruction or multi-byte data area, because those are removed from SymbolTable.
+
             if (!SymbolTable.TryGetValue(name, out Symbol sym)) {
                 return -1;
             }
-            if (sym.SymbolSource != Symbol.Source.Auto && sym.SymbolSource != Symbol.Source.User) {
+            if (!sym.IsInternalLabel) {
                 return -1;
             }
             for (int i = 0; i < mAnattribs.Length; i++) {

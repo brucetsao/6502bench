@@ -271,10 +271,10 @@
     <value>Symbol value: {0}</value>
   </data>
   <data name="GENERATED_FOR_LATEST" xml:space="preserve">
-    <value>Assembler: {0} (latest)</value>
+    <value>Target assembler: {0} (latest)</value>
   </data>
   <data name="GENERATED_FOR_VERSION" xml:space="preserve">
-    <value>Assembler: {0} v{1}</value>
+    <value>Target assembler: {0} v{1} [{2}]</value>
   </data>
   <data name="HIDE_COL" xml:space="preserve">
     <value>Hide</value>
@@ -290,6 +290,18 @@
   </data>
   <data name="INITIAL_SYMBOL_FILES" xml:space="preserve">
     <value>Symbol files:</value>
+  </data>
+  <data name="INVALID_ADDRESS" xml:space="preserve">
+    <value>(unknown address)</value>
+  </data>
+  <data name="INVALID_FORMAT_WORD_SEL_CAPTION" xml:space="preserve">
+    <value>Invalid Selection</value>
+  </data>
+  <data name="INVALID_FORMAT_WORD_SEL_NON1" xml:space="preserve">
+    <value>Unable to format as word: selection must be an even number of bytes that have not previously been formatted as multi-byte values.{0}Use Toggle Data Scan (Ctrl+D) to turn off auto-detection of strings and memory fill.</value>
+  </data>
+  <data name="INVALID_FORMAT_WORD_SEL_UNEVEN" xml:space="preserve">
+    <value>Unable to format as word: each selected region must have an even number of bytes ({0} region(s) are selected).</value>
   </data>
   <data name="LEGAL_STUFF_TITLE" xml:space="preserve">
     <value>Legal Stuff</value>
@@ -345,6 +357,9 @@
   <data name="PLUGIN_DIR_FAIL_CAPTION" xml:space="preserve">
     <value>Failed Preparing Plugin Directory</value>
   </data>
+  <data name="PROGRESS_ASSEMBLING" xml:space="preserve">
+    <value>Executing assembler...</value>
+  </data>
   <data name="PROGRESS_GENERATING_FMT" xml:space="preserve">
     <value>Generating {0}...</value>
   </data>
@@ -393,6 +408,9 @@
   <data name="SHOW_COL" xml:space="preserve">
     <value>Show</value>
   </data>
+  <data name="STATUS_CTRL_H_HIT" xml:space="preserve">
+    <value>Ctrl+H was pressed, waiting for second key of chord...</value>
+  </data>
   <data name="STATUS_READY" xml:space="preserve">
     <value>Ready</value>
   </data>
@@ -419,12 +437,6 @@
   </data>
   <data name="TITLE_NEW_PROJECT" xml:space="preserve">
     <value>[new project]</value>
-  </data>
-  <data name="UNSAVED_CHANGES" xml:space="preserve">
-    <value>The current project has unsaved changes that will be lost. Are you sure you wish to continue?</value>
-  </data>
-  <data name="UNSAVED_CHANGES_CAPTION" xml:space="preserve">
-    <value>Unsaved Changes</value>
   </data>
   <data name="UNSET" xml:space="preserve">
     <value>[unset]</value>

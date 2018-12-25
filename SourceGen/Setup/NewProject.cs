@@ -167,18 +167,17 @@ namespace SourceGen.Setup {
         }
 
         private void selectFileButton_Click(object sender, EventArgs e) {
-            OpenFileDialog fileDlg = new OpenFileDialog();
-
-            fileDlg.Filter = Properties.Resources.FILE_FILTER_ALL;
-
-            fileDlg.FilterIndex = 1;
+            OpenFileDialog fileDlg = new OpenFileDialog() {
+                Filter = Properties.Resources.FILE_FILTER_ALL,
+                FilterIndex = 1
+            };
             if (fileDlg.ShowDialog() == DialogResult.OK) {
                 FileInfo fi = new FileInfo(fileDlg.FileName);
 
                 if (fi.Length > DisasmProject.MAX_DATA_FILE_SIZE) {
                     string msg = string.Format(Properties.Resources.OPEN_DATA_TOO_LARGE,
                             fi.Length / 1024, DisasmProject.MAX_DATA_FILE_SIZE / 1024);
-                    MessageBox.Show(msg, Properties.Resources.OPEN_DATA_FAIL_CAPTION,
+                    MessageBox.Show(this, msg, Properties.Resources.OPEN_DATA_FAIL_CAPTION,
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }

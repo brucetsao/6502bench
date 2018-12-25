@@ -38,6 +38,7 @@
     <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -70,6 +71,12 @@
     <Compile Include="AppForms\AboutBox.Designer.cs">
       <DependentUpon>AboutBox.cs</DependentUpon>
     </Compile>
+    <Compile Include="AppForms\DiscardChanges.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AppForms\DiscardChanges.Designer.cs">
+      <DependentUpon>DiscardChanges.cs</DependentUpon>
+    </Compile>
     <Compile Include="AppForms\EditAppSettings.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -82,6 +89,12 @@
     <Compile Include="AppForms\FindBox.Designer.cs">
       <DependentUpon>FindBox.cs</DependentUpon>
     </Compile>
+    <Compile Include="AppForms\FormatSplitAddress.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AppForms\FormatSplitAddress.Designer.cs">
+      <DependentUpon>FormatSplitAddress.cs</DependentUpon>
+    </Compile>
     <Compile Include="AppForms\GotoBox.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -91,6 +104,8 @@
     <Compile Include="AppSettings.cs" />
     <Compile Include="AsmGen\AsmCc65.cs" />
     <Compile Include="AsmGen\AsmMerlin32.cs" />
+    <Compile Include="AsmGen\AsmTass64.cs" />
+    <Compile Include="AsmGen\AssemblerConfig.cs" />
     <Compile Include="AsmGen\AssemblerVersion.cs" />
     <Compile Include="AsmGen\GenAndAsm.cs">
       <SubType>Form</SubType>
@@ -105,7 +120,6 @@
     <Compile Include="AsmGen\AssemblerProgress.Designer.cs">
       <DependentUpon>AssemblerProgress.cs</DependentUpon>
     </Compile>
-    <Compile Include="AsmGen\GenCc65.cs" />
     <Compile Include="AsmGen\GenCommon.cs" />
     <Compile Include="AsmGen\GeneratorProgress.cs">
       <SubType>Form</SubType>
@@ -113,7 +127,6 @@
     <Compile Include="AsmGen\GeneratorProgress.Designer.cs">
       <DependentUpon>GeneratorProgress.cs</DependentUpon>
     </Compile>
-    <Compile Include="AsmGen\GenMerlin32.cs" />
     <Compile Include="AsmGen\IAssembler.cs" />
     <Compile Include="AsmGen\IGenerator.cs" />
     <Compile Include="AsmGen\LabelLocalizer.cs" />
@@ -262,11 +275,17 @@
     <EmbeddedResource Include="AppForms\AboutBox.resx">
       <DependentUpon>AboutBox.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="AppForms\DiscardChanges.resx">
+      <DependentUpon>DiscardChanges.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="AppForms\EditAppSettings.resx">
       <DependentUpon>EditAppSettings.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="AppForms\FindBox.resx">
       <DependentUpon>FindBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AppForms\FormatSplitAddress.resx">
+      <DependentUpon>FormatSplitAddress.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="AppForms\GotoBox.resx">
       <DependentUpon>GotoBox.cs</DependentUpon>

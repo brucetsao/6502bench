@@ -54,6 +54,7 @@ namespace Asm65 {
             public bool mUpperOperandA;         // display acc operand in upper case?
             public bool mUpperOperandS;         // display stack operand in upper case?
             public bool mUpperOperandXY;        // display index register operand in upper case?
+            public bool mBankSelectBackQuote;   // use '`' rather than '^' for bank select?
             public bool mAddSpaceLongComment;   // insert space after delimiter for long comments?
 
             // functional changes to assembly output
@@ -62,7 +63,8 @@ namespace Asm65 {
             public bool mAllowHighAsciiCharConst;   // can we do high-ASCII character constants?
                                                     // (this might need to be generalized)
 
-            public string mForceAbsOpcodeSuffix;    // these may be null or empty
+            public string mForceDirectOperandPrefix;    // these may be null or empty
+            public string mForceAbsOpcodeSuffix;
             public string mForceAbsOperandPrefix;
             public string mForceLongOpcodeSuffix;
             public string mForceLongOperandPrefix;
@@ -74,15 +76,18 @@ namespace Asm65 {
             // miscellaneous
             public bool mHexDumpAsciiOnly;              // disallow non-ASCII chars in hex dumps?
 
+            public bool mSpacesBetweenBytes;    // "20edfd" vs. "20 ed fd"
+
             public enum CharConvMode { Unknown = 0, PlainAscii, HighLowAscii };
             public CharConvMode mHexDumpCharConvMode;   // character conversion mode for dumps
 
-            public enum ExpressionMode { Unknown = 0, Simple, Merlin };
+            // Hopefully we don't need a separate mode for every assembler in existence.
+            public enum ExpressionMode { Unknown = 0, Common, Cc65, Merlin };
             public ExpressionMode mExpressionMode;      // symbol rendering mode
 
             // Deserialization helper.
             public static ExpressionMode ParseExpressionMode(string str) {
-                ExpressionMode em = ExpressionMode.Simple;
+                ExpressionMode em = ExpressionMode.Common;
                 if (!string.IsNullOrEmpty(str)) {
                     if (Enum.TryParse<ExpressionMode>(str, out ExpressionMode pem)) {
                         em = pem;
@@ -481,7 +486,9 @@ namespace Asm65 {
         /// <returns></returns>
         public string FormatMnemonic(string mnemonic, OpDef.WidthDisambiguation wdis) {
             string opcodeStr = mnemonic;
-            if (wdis == OpDef.WidthDisambiguation.ForceAbs) {
+            if (wdis == OpDef.WidthDisambiguation.ForceDirect) {
+                // nothing to do for opcode
+            } else if (wdis == OpDef.WidthDisambiguation.ForceAbs) {
                 if (!string.IsNullOrEmpty(mFormatConfig.mForceAbsOpcodeSuffix)) {
                     opcodeStr += mFormatConfig.mForceAbsOpcodeSuffix;
                 }
@@ -503,13 +510,18 @@ namespace Asm65 {
         /// Generates an operand format.
         /// </summary>
         /// <param name="addrMode">Addressing mode.</param>
+        /// <param name="wdis">Width disambiguation mode.</param>
         /// <returns>Format string.</returns>
         private string GenerateOperandFormat(OpDef.AddressMode addrMode,
                 OpDef.WidthDisambiguation wdis) {
             string fmt;
             string wdisStr = string.Empty;
 
-            if (wdis == OpDef.WidthDisambiguation.ForceAbs) {
+            if (wdis == OpDef.WidthDisambiguation.ForceDirect) {
+                if (!string.IsNullOrEmpty(mFormatConfig.mForceDirectOperandPrefix)) {
+                    wdisStr = mFormatConfig.mForceDirectOperandPrefix;
+                }
+            } else if (wdis == OpDef.WidthDisambiguation.ForceAbs) {
                 if (!string.IsNullOrEmpty(mFormatConfig.mForceAbsOperandPrefix)) {
                     wdisStr = mFormatConfig.mForceAbsOperandPrefix;
                 }
@@ -580,7 +592,7 @@ namespace Asm65 {
                 case AddressMode.StackRTI:
                 case AddressMode.StackRTL:
                 case AddressMode.StackRTS:
-                    fmt = "";
+                    fmt = string.Empty;
                     break;
                 case AddressMode.StackRel:
                     fmt = "{0}," + mSregChar;
@@ -597,22 +609,6 @@ namespace Asm65 {
             }
 
             return fmt;
-        }
-
-        /// <summary>
-        /// Formats a pseudo-opcode.
-        /// </summary>
-        /// <param name="opstr">Pseudo-op string to format.</param>
-        /// <returns>Formatted string.</returns>
-        public string FormatPseudoOp(string opstr) {
-            if (!mPseudoOpStrings.TryGetValue(opstr, out string result)) {
-                if (mFormatConfig.mUpperPseudoOpcodes) {
-                    result = mPseudoOpStrings[opstr] = opstr.ToUpperInvariant();
-                } else {
-                    result = mPseudoOpStrings[opstr] = opstr;
-                }
-            }
-            return result;
         }
 
         /// <summary>
@@ -633,15 +629,34 @@ namespace Asm65 {
         }
 
         /// <summary>
+        /// Formats a pseudo-opcode.
+        /// </summary>
+        /// <param name="opstr">Pseudo-op string to format.</param>
+        /// <returns>Formatted string.</returns>
+        public string FormatPseudoOp(string opstr) {
+            if (!mPseudoOpStrings.TryGetValue(opstr, out string result)) {
+                if (mFormatConfig.mUpperPseudoOpcodes) {
+                    result = mPseudoOpStrings[opstr] = opstr.ToUpperInvariant();
+                } else {
+                    result = mPseudoOpStrings[opstr] = opstr;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Generates a format string for N hex bytes.
         /// </summary>
         /// <param name="len">Number of bytes to handle in the format.</param>
         private void GenerateByteFormat(int len) {
             Debug.Assert(len <= MAX_BYTE_DUMP);
 
-            StringBuilder sb = new StringBuilder(len * 6);
+            StringBuilder sb = new StringBuilder(len * 7);
             for (int i = 0; i < len; i++) {
-                //. e.g. "{0:x2}"
+                if (i != 0 && mFormatConfig.mSpacesBetweenBytes) {
+                    sb.Append(' ');
+                }
+                // e.g. "{0:x2}"
                 sb.Append("{" + i + ":" + mHexFmtChar + "2}");
             }
             mByteDumpFormats[len - 1] = sb.ToString();

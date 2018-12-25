@@ -72,6 +72,7 @@ namespace SourceGen.AppForms
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.editHeaderCommentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.projectPropertiesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toggleDataScanToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem7 = new System.Windows.Forms.ToolStripSeparator();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.actionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -79,7 +80,6 @@ namespace SourceGen.AppForms
             this.overrideStatusFlagsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editLabelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editOperandToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.editDataFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editCommentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editLongCommentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editNoteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -90,6 +90,7 @@ namespace SourceGen.AppForms
             this.hintAsInlineDataToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeHintToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem11 = new System.Windows.Forms.ToolStripSeparator();
+            this.formatSplitAddressTableToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toggleSingleBytesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.deleteNoteCommentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem9 = new System.Windows.Forms.ToolStripSeparator();
@@ -170,10 +171,11 @@ namespace SourceGen.AppForms
             this.symbolPlatformCheckBox = new System.Windows.Forms.CheckBox();
             this.symbolListView = new System.Windows.Forms.ListView();
             this.symbolTypeColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.symbolNameColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.symbolValueColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.symbolNameColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.infoGroupBox = new System.Windows.Forms.GroupBox();
             this.infoTextBox = new System.Windows.Forms.TextBox();
+            this.formatAsWordToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainMenuStrip.SuspendLayout();
             this.mainStatusStrip.SuspendLayout();
             this.mainToolStrip.SuspendLayout();
@@ -238,7 +240,6 @@ namespace SourceGen.AppForms
             // newToolStripMenuItem
             // 
             this.newToolStripMenuItem.Name = "newToolStripMenuItem";
-            this.newToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
             this.newToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
             this.newToolStripMenuItem.Text = "New";
             this.newToolStripMenuItem.Click += new System.EventHandler(this.newToolStripMenuItem_Click);
@@ -246,7 +247,6 @@ namespace SourceGen.AppForms
             // openToolStripMenuItem
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
-            this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
             this.openToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
             this.openToolStripMenuItem.Text = "Open";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
@@ -269,7 +269,6 @@ namespace SourceGen.AppForms
             // closeToolStripMenuItem
             // 
             this.closeToolStripMenuItem.Name = "closeToolStripMenuItem";
-            this.closeToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.W)));
             this.closeToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
             this.closeToolStripMenuItem.Text = "Close";
             this.closeToolStripMenuItem.Click += new System.EventHandler(this.closeToolStripMenuItem_Click);
@@ -343,18 +342,20 @@ namespace SourceGen.AppForms
             this.toolStripMenuItem3,
             this.editHeaderCommentToolStripMenuItem,
             this.projectPropertiesToolStripMenuItem,
+            this.toggleDataScanToolStripMenuItem,
             this.toolStripMenuItem7,
             this.settingsToolStripMenuItem});
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
             this.editToolStripMenuItem.Size = new System.Drawing.Size(39, 20);
             this.editToolStripMenuItem.Text = "Edit";
+            this.editToolStripMenuItem.DropDownOpening += new System.EventHandler(this.editToolStripMenuItem_DropDownOpening);
             // 
             // undoToolStripMenuItem
             // 
             this.undoToolStripMenuItem.Name = "undoToolStripMenuItem";
             this.undoToolStripMenuItem.ShortcutKeyDisplayString = "";
             this.undoToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Z)));
-            this.undoToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.undoToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.undoToolStripMenuItem.Text = "Undo";
             this.undoToolStripMenuItem.Click += new System.EventHandler(this.undoToolStripMenuItem_Click);
             // 
@@ -362,33 +363,33 @@ namespace SourceGen.AppForms
             // 
             this.redoToolStripMenuItem.Name = "redoToolStripMenuItem";
             this.redoToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Y)));
-            this.redoToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.redoToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.redoToolStripMenuItem.Text = "Redo";
             this.redoToolStripMenuItem.Click += new System.EventHandler(this.redoToolStripMenuItem_Click);
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(198, 6);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(204, 6);
             // 
             // copyToolStripMenuItem
             // 
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
             this.copyToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.C)));
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.copyToolStripMenuItem.Text = "Copy";
             this.copyToolStripMenuItem.Click += new System.EventHandler(this.copyToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(198, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(204, 6);
             // 
             // selectAllToolStripMenuItem
             // 
             this.selectAllToolStripMenuItem.Name = "selectAllToolStripMenuItem";
             this.selectAllToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
-            this.selectAllToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.selectAllToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.selectAllToolStripMenuItem.Text = "Select All";
             this.selectAllToolStripMenuItem.Click += new System.EventHandler(this.selectAllToolStripMenuItem_Click);
             // 
@@ -396,7 +397,7 @@ namespace SourceGen.AppForms
             // 
             this.findToolStripMenuItem.Name = "findToolStripMenuItem";
             this.findToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.F)));
-            this.findToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.findToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.findToolStripMenuItem.Text = "Find...";
             this.findToolStripMenuItem.Click += new System.EventHandler(this.findToolStripMenuItem_Click);
             // 
@@ -404,7 +405,7 @@ namespace SourceGen.AppForms
             // 
             this.findNextToolStripMenuItem.Name = "findNextToolStripMenuItem";
             this.findNextToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F3;
-            this.findNextToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.findNextToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.findNextToolStripMenuItem.Text = "Find Next";
             this.findNextToolStripMenuItem.Click += new System.EventHandler(this.findNextToolStripMenuItem_Click);
             // 
@@ -412,38 +413,46 @@ namespace SourceGen.AppForms
             // 
             this.gotoToolStripMenuItem.Name = "gotoToolStripMenuItem";
             this.gotoToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.G)));
-            this.gotoToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.gotoToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.gotoToolStripMenuItem.Text = "Go To...";
             this.gotoToolStripMenuItem.Click += new System.EventHandler(this.gotoToolStripMenuItem_Click);
             // 
             // toolStripMenuItem3
             // 
             this.toolStripMenuItem3.Name = "toolStripMenuItem3";
-            this.toolStripMenuItem3.Size = new System.Drawing.Size(198, 6);
+            this.toolStripMenuItem3.Size = new System.Drawing.Size(204, 6);
             // 
             // editHeaderCommentToolStripMenuItem
             // 
             this.editHeaderCommentToolStripMenuItem.Name = "editHeaderCommentToolStripMenuItem";
-            this.editHeaderCommentToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.editHeaderCommentToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.editHeaderCommentToolStripMenuItem.Text = "Edit Header Comment...";
             this.editHeaderCommentToolStripMenuItem.Click += new System.EventHandler(this.editHeaderCommentToolStripMenuItem_Click);
             // 
             // projectPropertiesToolStripMenuItem
             // 
             this.projectPropertiesToolStripMenuItem.Name = "projectPropertiesToolStripMenuItem";
-            this.projectPropertiesToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.projectPropertiesToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.projectPropertiesToolStripMenuItem.Text = "Project Properties...";
             this.projectPropertiesToolStripMenuItem.Click += new System.EventHandler(this.projectPropertiesToolStripMenuItem_Click);
+            // 
+            // toggleDataScanToolStripMenuItem
+            // 
+            this.toggleDataScanToolStripMenuItem.Name = "toggleDataScanToolStripMenuItem";
+            this.toggleDataScanToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.D)));
+            this.toggleDataScanToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
+            this.toggleDataScanToolStripMenuItem.Text = "Toggle Data Scan";
+            this.toggleDataScanToolStripMenuItem.Click += new System.EventHandler(this.toggleDataScanToolStripMenuItem_Click);
             // 
             // toolStripMenuItem7
             // 
             this.toolStripMenuItem7.Name = "toolStripMenuItem7";
-            this.toolStripMenuItem7.Size = new System.Drawing.Size(198, 6);
+            this.toolStripMenuItem7.Size = new System.Drawing.Size(204, 6);
             // 
             // settingsToolStripMenuItem
             // 
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
-            this.settingsToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.settingsToolStripMenuItem.Size = new System.Drawing.Size(207, 22);
             this.settingsToolStripMenuItem.Text = "Settings...";
             this.settingsToolStripMenuItem.Click += new System.EventHandler(this.settingsToolStripMenuItem_Click);
             // 
@@ -454,7 +463,6 @@ namespace SourceGen.AppForms
             this.overrideStatusFlagsToolStripMenuItem,
             this.editLabelToolStripMenuItem,
             this.editOperandToolStripMenuItem,
-            this.editDataFormatToolStripMenuItem,
             this.editCommentToolStripMenuItem,
             this.editLongCommentToolStripMenuItem,
             this.editNoteToolStripMenuItem,
@@ -465,7 +473,9 @@ namespace SourceGen.AppForms
             this.hintAsInlineDataToolStripMenuItem,
             this.removeHintToolStripMenuItem,
             this.toolStripMenuItem11,
+            this.formatSplitAddressTableToolStripMenuItem,
             this.toggleSingleBytesToolStripMenuItem,
+            this.formatAsWordToolStripMenuItem,
             this.deleteNoteCommentToolStripMenuItem,
             this.toolStripMenuItem9,
             this.showHexDumpToolStripMenuItem});
@@ -477,109 +487,120 @@ namespace SourceGen.AppForms
             // setAddressToolStripMenuItem
             // 
             this.setAddressToolStripMenuItem.Name = "setAddressToolStripMenuItem";
-            this.setAddressToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.setAddressToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.setAddressToolStripMenuItem.Text = "Set Address...";
             this.setAddressToolStripMenuItem.Click += new System.EventHandler(this.EditAddress_Click);
             // 
             // overrideStatusFlagsToolStripMenuItem
             // 
             this.overrideStatusFlagsToolStripMenuItem.Name = "overrideStatusFlagsToolStripMenuItem";
-            this.overrideStatusFlagsToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.overrideStatusFlagsToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.overrideStatusFlagsToolStripMenuItem.Text = "Override Status Flags...";
             this.overrideStatusFlagsToolStripMenuItem.Click += new System.EventHandler(this.EditStatusFlags_Click);
             // 
             // editLabelToolStripMenuItem
             // 
             this.editLabelToolStripMenuItem.Name = "editLabelToolStripMenuItem";
-            this.editLabelToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.editLabelToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.L)));
+            this.editLabelToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.editLabelToolStripMenuItem.Text = "Edit Label...";
             this.editLabelToolStripMenuItem.Click += new System.EventHandler(this.EditLabel_Click);
             // 
             // editOperandToolStripMenuItem
             // 
             this.editOperandToolStripMenuItem.Name = "editOperandToolStripMenuItem";
-            this.editOperandToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.editOperandToolStripMenuItem.ShortcutKeyDisplayString = "";
+            this.editOperandToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
+            this.editOperandToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.editOperandToolStripMenuItem.Text = "Edit Operand...";
-            this.editOperandToolStripMenuItem.Click += new System.EventHandler(this.EditOperand_Click);
-            // 
-            // editDataFormatToolStripMenuItem
-            // 
-            this.editDataFormatToolStripMenuItem.Name = "editDataFormatToolStripMenuItem";
-            this.editDataFormatToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
-            this.editDataFormatToolStripMenuItem.Text = "Edit Data Format...";
-            this.editDataFormatToolStripMenuItem.Click += new System.EventHandler(this.EditData_Click);
+            this.editOperandToolStripMenuItem.Click += new System.EventHandler(this.EditInstrDataOperand_Click);
             // 
             // editCommentToolStripMenuItem
             // 
             this.editCommentToolStripMenuItem.Name = "editCommentToolStripMenuItem";
-            this.editCommentToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.editCommentToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+;";
+            this.editCommentToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Oem1)));
+            this.editCommentToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.editCommentToolStripMenuItem.Text = "Edit Comment...";
             this.editCommentToolStripMenuItem.Click += new System.EventHandler(this.EditComment_Click);
             // 
             // editLongCommentToolStripMenuItem
             // 
             this.editLongCommentToolStripMenuItem.Name = "editLongCommentToolStripMenuItem";
-            this.editLongCommentToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.editLongCommentToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.M)));
+            this.editLongCommentToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.editLongCommentToolStripMenuItem.Text = "Edit Long Comment...";
             this.editLongCommentToolStripMenuItem.Click += new System.EventHandler(this.EditLongComment_Click);
             // 
             // editNoteToolStripMenuItem
             // 
             this.editNoteToolStripMenuItem.Name = "editNoteToolStripMenuItem";
-            this.editNoteToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.editNoteToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
+            this.editNoteToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.editNoteToolStripMenuItem.Text = "Edit Note...";
             this.editNoteToolStripMenuItem.Click += new System.EventHandler(this.EditNote_Click);
             // 
             // editProjectSymbolToolStripMenuItem
             // 
             this.editProjectSymbolToolStripMenuItem.Name = "editProjectSymbolToolStripMenuItem";
-            this.editProjectSymbolToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.editProjectSymbolToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.editProjectSymbolToolStripMenuItem.Text = "Edit Project Symbol...";
             this.editProjectSymbolToolStripMenuItem.Click += new System.EventHandler(this.EditProjectSymbol_Click);
             // 
             // actionsMenuSeparator1
             // 
             this.actionsMenuSeparator1.Name = "actionsMenuSeparator1";
-            this.actionsMenuSeparator1.Size = new System.Drawing.Size(252, 6);
+            this.actionsMenuSeparator1.Size = new System.Drawing.Size(286, 6);
             // 
             // hintAsCodeToolStripMenuItem
             // 
             this.hintAsCodeToolStripMenuItem.Name = "hintAsCodeToolStripMenuItem";
-            this.hintAsCodeToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.hintAsCodeToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+H, Ctrl+C";
+            this.hintAsCodeToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.hintAsCodeToolStripMenuItem.Text = "Hint As Code Entry Point";
             this.hintAsCodeToolStripMenuItem.Click += new System.EventHandler(this.MarkAsCode_Click);
             // 
             // hintAsDataToolStripMenuItem
             // 
             this.hintAsDataToolStripMenuItem.Name = "hintAsDataToolStripMenuItem";
-            this.hintAsDataToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.hintAsDataToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+H, Ctrl+D";
+            this.hintAsDataToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.hintAsDataToolStripMenuItem.Text = "Hint As Data Start";
             this.hintAsDataToolStripMenuItem.Click += new System.EventHandler(this.MarkAsData_Click);
             // 
             // hintAsInlineDataToolStripMenuItem
             // 
             this.hintAsInlineDataToolStripMenuItem.Name = "hintAsInlineDataToolStripMenuItem";
-            this.hintAsInlineDataToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.hintAsInlineDataToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+H, Ctrl+I";
+            this.hintAsInlineDataToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.hintAsInlineDataToolStripMenuItem.Text = "Hint As Inline Data";
             this.hintAsInlineDataToolStripMenuItem.Click += new System.EventHandler(this.MarkAsInlineData_Click);
             // 
             // removeHintToolStripMenuItem
             // 
             this.removeHintToolStripMenuItem.Name = "removeHintToolStripMenuItem";
-            this.removeHintToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.removeHintToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+H, Ctrl+R";
+            this.removeHintToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.removeHintToolStripMenuItem.Text = "Remove Hints";
             this.removeHintToolStripMenuItem.Click += new System.EventHandler(this.MarkAsNoHint_Click);
             // 
             // toolStripMenuItem11
             // 
             this.toolStripMenuItem11.Name = "toolStripMenuItem11";
-            this.toolStripMenuItem11.Size = new System.Drawing.Size(252, 6);
+            this.toolStripMenuItem11.Size = new System.Drawing.Size(286, 6);
+            // 
+            // formatSplitAddressTableToolStripMenuItem
+            // 
+            this.formatSplitAddressTableToolStripMenuItem.Name = "formatSplitAddressTableToolStripMenuItem";
+            this.formatSplitAddressTableToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
+            this.formatSplitAddressTableToolStripMenuItem.Text = "Format Split-Address Table...";
+            this.formatSplitAddressTableToolStripMenuItem.Click += new System.EventHandler(this.FormatSplitAddressTable_Click);
             // 
             // toggleSingleBytesToolStripMenuItem
             // 
             this.toggleSingleBytesToolStripMenuItem.Name = "toggleSingleBytesToolStripMenuItem";
             this.toggleSingleBytesToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.B)));
-            this.toggleSingleBytesToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.toggleSingleBytesToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.toggleSingleBytesToolStripMenuItem.Text = "Toggle Single-Byte Format";
             this.toggleSingleBytesToolStripMenuItem.Click += new System.EventHandler(this.ToggleSingleBytes_Click);
             // 
@@ -587,19 +608,19 @@ namespace SourceGen.AppForms
             // 
             this.deleteNoteCommentToolStripMenuItem.Name = "deleteNoteCommentToolStripMenuItem";
             this.deleteNoteCommentToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.Delete;
-            this.deleteNoteCommentToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.deleteNoteCommentToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.deleteNoteCommentToolStripMenuItem.Text = "Delete Note/Long Comment";
             this.deleteNoteCommentToolStripMenuItem.Click += new System.EventHandler(this.DeleteNoteComment_Click);
             // 
             // toolStripMenuItem9
             // 
             this.toolStripMenuItem9.Name = "toolStripMenuItem9";
-            this.toolStripMenuItem9.Size = new System.Drawing.Size(252, 6);
+            this.toolStripMenuItem9.Size = new System.Drawing.Size(286, 6);
             // 
             // showHexDumpToolStripMenuItem
             // 
             this.showHexDumpToolStripMenuItem.Name = "showHexDumpToolStripMenuItem";
-            this.showHexDumpToolStripMenuItem.Size = new System.Drawing.Size(255, 22);
+            this.showHexDumpToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
             this.showHexDumpToolStripMenuItem.Text = "Show Hex Dump";
             this.showHexDumpToolStripMenuItem.Click += new System.EventHandler(this.ShowHexDump_Click);
             // 
@@ -984,6 +1005,7 @@ namespace SourceGen.AppForms
             // typeColumnHeader
             // 
             this.typeColumnHeader.Text = "Type";
+            this.typeColumnHeader.Width = 116;
             // 
             // notesGroupBox
             // 
@@ -1191,6 +1213,7 @@ namespace SourceGen.AppForms
             this.codeListView.Size = new System.Drawing.Size(446, 543);
             this.codeListView.TabIndex = 0;
             this.codeListView.UseCompatibleStateImageBehavior = false;
+            this.codeListView.View = System.Windows.Forms.View.Details;
             this.codeListView.VirtualMode = true;
             this.codeListView.CacheVirtualItems += new System.Windows.Forms.CacheVirtualItemsEventHandler(this.codeListView_CacheVirtualItems);
             this.codeListView.ColumnWidthChanged += new System.Windows.Forms.ColumnWidthChangedEventHandler(this.codeListView_ColumnWidthChanged);
@@ -1201,53 +1224,53 @@ namespace SourceGen.AppForms
             this.codeListView.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.codeListView_RetrieveVirtualItem);
             this.codeListView.SelectedIndexChanged += new System.EventHandler(this.codeListView_SelectedIndexChanged);
             this.codeListView.VirtualItemsSelectionRangeChanged += new System.Windows.Forms.ListViewVirtualItemsSelectionRangeChangedEventHandler(this.codeListView_VirtualItemsSelectionRangeChanged);
-            this.codeListView.MouseClick += new System.Windows.Forms.MouseEventHandler(this.codeListView_MouseClick);
             this.codeListView.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.codeListView_MouseDoubleClick);
+            this.codeListView.MouseDown += new System.Windows.Forms.MouseEventHandler(this.codeListView_MouseDown);
             // 
             // columnOffset
             // 
             this.columnOffset.Text = "offset";
-            this.columnOffset.Width = -2;
+            this.columnOffset.Width = 0;
             // 
             // columnAddr
             // 
             this.columnAddr.Text = "addr";
-            this.columnAddr.Width = -2;
+            this.columnAddr.Width = 0;
             // 
             // columnBytes
             // 
             this.columnBytes.Text = "bytes";
-            this.columnBytes.Width = -2;
+            this.columnBytes.Width = 0;
             // 
             // columnFlags
             // 
             this.columnFlags.Text = "flags";
-            this.columnFlags.Width = -2;
+            this.columnFlags.Width = 0;
             // 
             // columnAttr
             // 
             this.columnAttr.Text = "attr";
-            this.columnAttr.Width = -2;
+            this.columnAttr.Width = 0;
             // 
             // columnLabel
             // 
             this.columnLabel.Text = "label";
-            this.columnLabel.Width = -2;
+            this.columnLabel.Width = 0;
             // 
             // columnOpcode
             // 
             this.columnOpcode.Text = "opcode";
-            this.columnOpcode.Width = -2;
+            this.columnOpcode.Width = 0;
             // 
             // columnOperand
             // 
             this.columnOperand.Text = "operand";
-            this.columnOperand.Width = -2;
+            this.columnOperand.Width = 0;
             // 
             // columnComment
             // 
             this.columnComment.Text = "comment";
-            this.columnComment.Width = -2;
+            this.columnComment.Width = 0;
             // 
             // rightPanelSplitter
             // 
@@ -1373,8 +1396,8 @@ namespace SourceGen.AppForms
             | System.Windows.Forms.AnchorStyles.Right)));
             this.symbolListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.symbolTypeColumnHeader,
-            this.symbolNameColumnHeader,
-            this.symbolValueColumnHeader});
+            this.symbolValueColumnHeader,
+            this.symbolNameColumnHeader});
             this.symbolListView.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.symbolListView.FullRowSelect = true;
             this.symbolListView.GridLines = true;
@@ -1398,13 +1421,15 @@ namespace SourceGen.AppForms
             this.symbolTypeColumnHeader.Text = "Type";
             this.symbolTypeColumnHeader.Width = 44;
             // 
-            // symbolNameColumnHeader
-            // 
-            this.symbolNameColumnHeader.Text = "Name";
-            // 
             // symbolValueColumnHeader
             // 
             this.symbolValueColumnHeader.Text = "Value";
+            this.symbolValueColumnHeader.Width = 54;
+            // 
+            // symbolNameColumnHeader
+            // 
+            this.symbolNameColumnHeader.Text = "Name";
+            this.symbolNameColumnHeader.Width = 100;
             // 
             // infoGroupBox
             // 
@@ -1428,6 +1453,14 @@ namespace SourceGen.AppForms
             this.infoTextBox.Size = new System.Drawing.Size(177, 120);
             this.infoTextBox.TabIndex = 0;
             // 
+            // formatAsWordToolStripMenuItem
+            // 
+            this.formatAsWordToolStripMenuItem.Name = "formatAsWordToolStripMenuItem";
+            this.formatAsWordToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.W)));
+            this.formatAsWordToolStripMenuItem.Size = new System.Drawing.Size(289, 22);
+            this.formatAsWordToolStripMenuItem.Text = "Format As Word";
+            this.formatAsWordToolStripMenuItem.Click += new System.EventHandler(this.formatAsWordToolStripMenuItem_Click);
+            // 
             // ProjectView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1443,7 +1476,8 @@ namespace SourceGen.AppForms
             this.Text = "6502bench SourceGen";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ProjectView_FormClosing);
             this.Load += new System.EventHandler(this.ProjectView_Load);
-            this.SizeChanged += new System.EventHandler(this.ProjectView_SizeChanged);
+            this.LocationChanged += new System.EventHandler(this.ProjectView_SizeOrLocChanged);
+            this.SizeChanged += new System.EventHandler(this.ProjectView_SizeOrLocChanged);
             this.mainMenuStrip.ResumeLayout(false);
             this.mainMenuStrip.PerformLayout();
             this.mainStatusStrip.ResumeLayout(false);
@@ -1523,8 +1557,8 @@ namespace SourceGen.AppForms
         private System.Windows.Forms.CheckBox symbolAutoCheckBox;
         private System.Windows.Forms.GroupBox symbolsGroupBox;
         private System.Windows.Forms.ListView symbolListView;
-        private System.Windows.Forms.ColumnHeader symbolNameColumnHeader;
         private System.Windows.Forms.ColumnHeader symbolValueColumnHeader;
+        private System.Windows.Forms.ColumnHeader symbolNameColumnHeader;
         private System.Windows.Forms.ColumnHeader symbolTypeColumnHeader;
         private System.Windows.Forms.ColumnHeader offsetColumnHeader;
         private System.Windows.Forms.ColumnHeader addressColumnHeader;
@@ -1543,7 +1577,6 @@ namespace SourceGen.AppForms
         private System.Windows.Forms.ToolStripMenuItem overrideStatusFlagsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editLabelToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editOperandToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem editDataFormatToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editCommentToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editLongCommentToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editNoteToolStripMenuItem;
@@ -1611,6 +1644,9 @@ namespace SourceGen.AppForms
         private System.Windows.Forms.ToolStripMenuItem toggleSingleBytesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editProjectSymbolToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem deleteNoteCommentToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem formatSplitAddressTableToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem toggleDataScanToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem formatAsWordToolStripMenuItem;
     }
 }
 

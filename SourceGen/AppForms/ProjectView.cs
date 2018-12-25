@@ -51,7 +51,7 @@ namespace SourceGen.AppForms {
         /// Symbol subset, used to supply data to the symbol ListView.  Initialized with
         /// an empty symbol table.
         /// </summary>
-        private SymbolTableSubset mSymbolSubset = new SymbolTableSubset(new SymbolTable());
+        private SymbolTableSubset mSymbolSubset;
 
         /// <summary>
         /// Current code list view selection.  The length will match the DisplayList Count.
@@ -152,6 +152,11 @@ namespace SourceGen.AppForms {
         private int mTargetHighlightIndex = -1;
 
         /// <summary>
+        /// Set to true if the last key hit was Ctrl+H.
+        /// </summary>
+        private bool mCtrlHSeen;
+
+        /// <summary>
         /// CPU definition used when the Formatter was created.  If the CPU choice or
         /// inclusion of undocumented opcodes changes, we need to wipe the formatter.
         /// </summary>
@@ -195,20 +200,34 @@ namespace SourceGen.AppForms {
         }
 
         private void ProjectView_Load(object sender, EventArgs e) {
+            // It's *really* unstable right now, so actively discourage its use.
+            if (Type.GetType("Mono.Runtime") != null) {
+                MessageBox.Show(this,
+                    "WARNING: SourceGen is currently unstable under Mono. " +
+                    "Many features are badly broken. Proceed at your own risk.",
+                    "Danger! Danger!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
             if (RuntimeDataAccess.GetDirectory() == null) {
-                MessageBox.Show(Properties.Resources.RUNTIME_DIR_NOT_FOUND,
+                MessageBox.Show(this, Properties.Resources.RUNTIME_DIR_NOT_FOUND,
                     Properties.Resources.RUNTIME_DIR_NOT_FOUND_CAPTION,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
+                return;
             }
             try {
                 PluginDllCache.PreparePluginDir();
             } catch (Exception ex) {
+                string pluginPath = PluginDllCache.GetPluginDirPath();
+                if (pluginPath == null) {
+                    pluginPath = "<???>";
+                }
                 string msg = string.Format(Properties.Resources.PLUGIN_DIR_FAIL,
-                    PluginDllCache.GetPluginDirPath() + ": " + ex.Message);
-                MessageBox.Show(msg, Properties.Resources.PLUGIN_DIR_FAIL_CAPTION,
+                    pluginPath + ": " + ex.Message);
+                MessageBox.Show(this, msg, Properties.Resources.PLUGIN_DIR_FAIL_CAPTION,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
+                return;
             }
 
             logoPictureBox.ImageLocation = RuntimeDataAccess.GetPathName(LOGO_FILE_NAME);
@@ -227,35 +246,54 @@ namespace SourceGen.AppForms {
                 mActionsMenuItems[i] = actionsToolStripMenuItem.DropDownItems[i];
             }
 
+            // Load the settings from the file.  Some things (like the symbol subset) need
+            // these.  The general "apply settings" doesn't happen until a bit later, after
+            // the sub-windows have been initialized.
+            LoadAppSettings();
+
             // Init primary ListView (virtual, ownerdraw)
             InitCodeListView();
 
             // Init Symbols ListView (virtual, non-ownerdraw)
+            mSymbolSubset = new SymbolTableSubset(new SymbolTable());
             symbolListView.SetDoubleBuffered(true);
             InitSymbolListView();
 
-            LoadAppSettings();
-            ApplyAppSettings();
-
             // Init References ListView (non-virtual, non-ownerdraw)
             referencesListView.SetDoubleBuffered(true);
+
+            // Place the main window and apply the various settings.
+            SetAppWindowLocation();
+            ApplyAppSettings();
 
             UpdateActionMenu();
             UpdateMenuItemsAndTitle();
             UpdateRecentLinks();
 
             ShowNoProject();
+
+            ProcessCommandLine();
+        }
+
+        private void ProcessCommandLine() {
+            string[] args = Environment.GetCommandLineArgs();
+            if (args.Length == 2) {
+                DoOpenFile(Path.GetFullPath(args[1]));
+            }
         }
 
         private void InitCodeListView() {
             ListView cv = codeListView;
-            cv.View = View.Details;
+            //cv.View = View.Details;
 
             // Create an empty place-holder for the context menu.
             codeListView.ContextMenuStrip = new ContextMenuStrip();
 
             // When the Actions or context menu are opened, all menu items get transferred over.
             codeListView.ContextMenuStrip.Opening += codeListView_CmsOpening;
+            // When the context menu closes, move all the menu items back to the Actions menu,
+            // so that you can open it with Alt-A.
+            codeListView.ContextMenuStrip.Closed += ActionsMenuOpening;
 
             // Set default widths, in case we don't have a value for this in AppSettings.
             CodeListColumnWidths widths = GetDefaultCodeListColumnWidths();
@@ -331,20 +369,40 @@ namespace SourceGen.AppForms {
                 return;
             }
 
-            // Collect some window and column widths.  Don't grab the window size if we're
+            // Collect some window widths.  Don't grab the main window size if we're
             // maximized or minimized.
-            if (this.WindowState == FormWindowState.Normal) {
-                AppSettings.Global.SetInt(AppSettings.MAIN_WINDOW_WIDTH, this.Size.Width);
-                AppSettings.Global.SetInt(AppSettings.MAIN_WINDOW_HEIGHT, this.Size.Height);
-                AppSettings.Global.SetInt(AppSettings.MAIN_LEFT_SPLITTER_DIST,
+            if (this.WindowState == FormWindowState.Normal ||
+                    this.WindowState == FormWindowState.Maximized) {
+                if (this.WindowState == FormWindowState.Normal) {
+                    AppSettings.Global.SetInt(AppSettings.MAIN_WINDOW_LOC_X, this.Location.X);
+                    AppSettings.Global.SetInt(AppSettings.MAIN_WINDOW_LOC_Y, this.Location.Y);
+                    AppSettings.Global.SetInt(AppSettings.MAIN_WINDOW_WIDTH, this.Size.Width);
+                    AppSettings.Global.SetInt(AppSettings.MAIN_WINDOW_HEIGHT, this.Size.Height);
+                }
+                AppSettings.Global.SetBool(AppSettings.MAIN_WINDOW_MAXIMIZED,
+                    this.WindowState == FormWindowState.Maximized);
+
+                // Horizontal splitters.  We want to record the panel widths, rather than the
+                // splitter distance, because otherwise the right panel doesn't keep its size
+                // when the middle section changes during maximization.
+                AppSettings.Global.SetInt(AppSettings.MAIN_LEFT_PANEL_WIDTH,
                     mainSplitterLeft.SplitterDistance);
-                AppSettings.Global.SetInt(AppSettings.MAIN_RIGHT_SPLITTER_DIST,
-                    mainSplitterRight.SplitterDistance);
+                AppSettings.Global.SetInt(AppSettings.MAIN_RIGHT_PANEL_WIDTH,
+                    this.Size.Width - (mainSplitterLeft.SplitterDistance +
+                                       mainSplitterRight.SplitterDistance));
+
+                // Vertical splitters.
                 AppSettings.Global.SetInt(AppSettings.MAIN_LEFT_SIDE_SPLITTER_DIST,
                     leftPanelSplitter.SplitterDistance);
                 AppSettings.Global.SetInt(AppSettings.MAIN_RIGHT_SIDE_SPLITTER_DIST,
                     rightPanelSplitter.SplitterDistance);
+            } else {
+                // VisualStudio appears to un-minimize its window before closing it.  We
+                // could probably do that and grab the size values on the way out.
+                AppSettings.Global.SetBool(AppSettings.MAIN_WINDOW_MAXIMIZED, false);
             }
+
+            SerializeCodeListColumnWidths();
             SerializeReferencesColumnWidths();
             SerializeNotesColumnWidths();
             SerializeSymbolColumnWidths();
@@ -376,28 +434,73 @@ namespace SourceGen.AppForms {
         }
 
         /// <summary>
-        /// Applies "actionable" settings to the ProjectView, pulling them out of the global
-        /// settings object.  If a project is open, refreshes the display list and all sub-windows.
+        /// Sets the app window's location and size.
         /// </summary>
-        private void ApplyAppSettings() {
-            Debug.WriteLine("ApplyAppSettings...");
+        private void SetAppWindowLocation() {
+            const int DEFAULT_WIDTH = 1280;
+            const int DEFAULT_HEIGHT = 720;
+            const int DEFAULT_SPLIT = 250;
+
             AppSettings settings = AppSettings.Global;
 
             // Main window size.
             this.Size = new Size(
-                settings.GetInt(AppSettings.MAIN_WINDOW_WIDTH, 1280),
-                settings.GetInt(AppSettings.MAIN_WINDOW_HEIGHT, 720));
-            // Left splitter with is distance from left edge of window.
+                settings.GetInt(AppSettings.MAIN_WINDOW_WIDTH, DEFAULT_WIDTH),
+                settings.GetInt(AppSettings.MAIN_WINDOW_HEIGHT, DEFAULT_HEIGHT));
+            // Left splitter width is distance from left edge of window.
             mainSplitterLeft.SplitterDistance =
-                settings.GetInt(AppSettings.MAIN_LEFT_SPLITTER_DIST, 250);
-            // Right splitter posn is distance from right edge of left splitter.
+                settings.GetInt(AppSettings.MAIN_LEFT_PANEL_WIDTH, DEFAULT_SPLIT);
+            // Right splitter distance is distance from right edge of left splitter, i.e.
+            // the width of the middle section, *not* the width of the right panel.
+            // --> splitter_distance = main_width - (left_width + right_width)
+            int rightSplitWidth = settings.GetInt(AppSettings.MAIN_RIGHT_PANEL_WIDTH,
+                DEFAULT_SPLIT);
             mainSplitterRight.SplitterDistance =
-                settings.GetInt(AppSettings.MAIN_RIGHT_SPLITTER_DIST, (1280 - 250) - 250);
+                this.Size.Width - (mainSplitterLeft.SplitterDistance + rightSplitWidth);
 
+            // Vertical splits, e.g. References vs. Notes.
             leftPanelSplitter.SplitterDistance =
                 settings.GetInt(AppSettings.MAIN_LEFT_SIDE_SPLITTER_DIST, 350);
             rightPanelSplitter.SplitterDistance =
                 settings.GetInt(AppSettings.MAIN_RIGHT_SIDE_SPLITTER_DIST, 400);
+
+            // Get working area of screen the system is going to display us on.  Note that,
+            // with multiple displays, the X/Y coordinates for the display's upper left may
+            // be negative.
+            Screen myScreen = Screen.FromControl(this);
+            Rectangle scrArea = myScreen.WorkingArea;
+
+            // Upper-left corner of our window that positions us in the center.
+            Point centered = new Point(scrArea.X + (scrArea.Width - this.Size.Width) / 2,
+                scrArea.Y + (scrArea.Height - this.Size.Height) / 2);
+
+            // Get requested location (if any).
+            Point loc = new Point();
+            loc.X = settings.GetInt(AppSettings.MAIN_WINDOW_LOC_X, int.MinValue);
+            loc.Y = settings.GetInt(AppSettings.MAIN_WINDOW_LOC_Y, int.MinValue);
+            if (loc.X == int.MinValue || loc.Y == int.MinValue) {
+                // No setting exists; center it on the screen.
+                loc = centered;
+            } else {
+                // See if this location makes sense.  As a quick sanity check we test to see
+                // if the top-center part of the window is visible.  If not, it may not be
+                // possible to reposition the window because the title bar won't be visible.
+                //
+                // Win10 seems to be okay with dragging a window below the icon bar at the
+                // bottom, which makes it hard to get at.  We offset the Y position by a few
+                // pixels to give us some wiggle room.
+                Point checkPoint = new Point(loc.X + this.Size.Width / 2, loc.Y + 8);
+                if (!scrArea.Contains(checkPoint)) {
+                    Debug.WriteLine("Titlebar " + checkPoint + " not inside " + scrArea);
+                    loc = centered;
+                }
+            }
+
+            this.Location = loc;
+
+            if (settings.GetBool(AppSettings.MAIN_WINDOW_MAXIMIZED, false)) {
+                this.WindowState = FormWindowState.Maximized;
+            }
 
             // Configure column widths.
             string widthStr = settings.GetString(AppSettings.CDLV_COL_WIDTHS, null);
@@ -410,6 +513,15 @@ namespace SourceGen.AppForms {
             DeserializeReferencesColumnWidths();
             DeserializeNotesColumnWidths();
             DeserializeSymbolColumnWidths();
+        }
+
+        /// <summary>
+        /// Applies "actionable" settings to the ProjectView, pulling them out of the global
+        /// settings object.  If a project is open, refreshes the display list and all sub-windows.
+        /// </summary>
+        private void ApplyAppSettings() {
+            Debug.WriteLine("ApplyAppSettings...");
+            AppSettings settings = AppSettings.Global;
 
             // Set up the formatter.
             mFormatterConfig = new Formatter.FormatConfig();
@@ -480,9 +592,10 @@ namespace SourceGen.AppForms {
             }
         }
 
-        // Make sure we pick up changes to the window size.  We don't catch size-chage events
-        // for the left/right splitter widths because that should be picked up by the sub-windows.
-        private void ProjectView_SizeChanged(object sender, EventArgs e) {
+        // Make sure we pick up changes to the window size or position.  We don't catch
+        // size-chage events for the left/right splitter widths because that should be picked
+        // up by events on sub-windows.
+        private void ProjectView_SizeOrLocChanged(object sender, EventArgs e) {
             AppSettings.Global.Dirty = true;
         }
 
@@ -510,6 +623,7 @@ namespace SourceGen.AppForms {
             gotoToolStripMenuItem.Enabled = true;
             editHeaderCommentToolStripMenuItem.Enabled = true;
             projectPropertiesToolStripMenuItem.Enabled = true;
+            toggleDataScanToolStripMenuItem.Enabled = true;
 
             showUndoRedoHistoryToolStripMenuItem.Enabled = true;
             showAnalysisTimersToolStripMenuItem.Enabled = true;
@@ -541,6 +655,7 @@ namespace SourceGen.AppForms {
             gotoToolStripMenuItem.Enabled = false;
             editHeaderCommentToolStripMenuItem.Enabled = false;
             projectPropertiesToolStripMenuItem.Enabled = false;
+            toggleDataScanToolStripMenuItem.Enabled = false;
 
             showUndoRedoHistoryToolStripMenuItem.Enabled = false;
             showAnalysisTimersToolStripMenuItem.Enabled = false;
@@ -664,7 +779,8 @@ namespace SourceGen.AppForms {
                 Debug.WriteLine("PrepareNewProject exception: " + ex);
                 string message = Properties.Resources.OPEN_DATA_FAIL_CAPTION;
                 string caption = Properties.Resources.OPEN_DATA_FAIL_MESSAGE + ": " + ex.Message;
-                MessageBox.Show(caption, message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, caption, message, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
                 return false;
             }
             proj.UseMainAppDomainForPlugins = mUseMainAppDomainForPlugins;
@@ -687,9 +803,8 @@ namespace SourceGen.AppForms {
             string messages = mProject.LoadExternalFiles();
             if (messages.Length != 0) {
                 // ProjectLoadIssues isn't quite the right dialog, but it'll do.
-                ProjectLoadIssues dlg = new ProjectLoadIssues();
-                dlg.CanCancel = false;
-                dlg.Messages = messages;
+                ProjectLoadIssues dlg = new ProjectLoadIssues(messages,
+                    ProjectLoadIssues.Buttons.Continue);
                 dlg.ShowDialog();
                 dlg.Dispose();
             }
@@ -817,6 +932,11 @@ namespace SourceGen.AppForms {
                 string timerStr = mReanalysisTimer.DumpToString("ProjectView timers:");
                 mShowAnalysisTimersDialog.BodyText = timerStr;
             }
+
+            // Lines may have moved around.  Update the selection highlight.  It's important
+            // we do it here, and not down in DoRefreshProject(), because at that point the
+            // ListView's selection index could be referencing a line off the end.
+            UpdateSelectionHighlight();
         }
 
         /// <summary>
@@ -1042,7 +1162,37 @@ namespace SourceGen.AppForms {
         // regardless of which has focus, making it useful for keyboard shortcuts.
         // Return true to indicate that we've handled the key.
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData) {
-            // Ctrl-Shift-Z is an alias for Redo (Ctrl-Y).
+            // Handle the Ctrl+H sequence.
+            if (mCtrlHSeen) {
+                if (keyData == (Keys.Control | Keys.C)) {
+                    if (hintAsCodeToolStripMenuItem.Enabled) {
+                        MarkAsCode_Click(null, null);
+                    }
+                } else if (keyData == (Keys.Control | Keys.D)) {
+                    if (hintAsDataToolStripMenuItem.Enabled) {
+                        MarkAsData_Click(null, null);
+                    }
+                } else if (keyData == (Keys.Control | Keys.I)) {
+                    if (hintAsInlineDataToolStripMenuItem.Enabled) {
+                        MarkAsInlineData_Click(null, null);
+                    }
+                } else if (keyData == (Keys.Control | Keys.R)) {
+                    if (removeHintToolStripMenuItem.Enabled) {
+                        MarkAsNoHint_Click(null, null);
+                    }
+                } else {
+                    System.Media.SystemSounds.Beep.Play();
+                }
+                mCtrlHSeen = false;
+                toolStripStatusLabel.Text = Properties.Resources.STATUS_READY;
+                return true;
+            } else if (keyData == (Keys.Control | Keys.H)) {
+                mCtrlHSeen = true;
+                toolStripStatusLabel.Text = Properties.Resources.STATUS_CTRL_H_HIT;
+                return true;
+            }
+
+            // Ctrl+Shift+Z is an alias for Redo (Ctrl+Y).
             if (keyData == (Keys.Control | Keys.Shift | Keys.Z)) {
                 if (redoToolStripMenuItem.Enabled) {
                     redoToolStripMenuItem_Click(null, null);
@@ -1175,11 +1325,10 @@ namespace SourceGen.AppForms {
                 return;
             }
 
-            OpenFileDialog fileDlg = new OpenFileDialog();
-
-            fileDlg.Filter = ProjectFile.FILENAME_FILTER + "|" +
-                Properties.Resources.FILE_FILTER_ALL;
-            fileDlg.FilterIndex = 1;
+            OpenFileDialog fileDlg = new OpenFileDialog() {
+                Filter = ProjectFile.FILENAME_FILTER + "|" + Properties.Resources.FILE_FILTER_ALL,
+                FilterIndex = 1
+            };
             if (fileDlg.ShowDialog() != DialogResult.OK) {
                 return;
             }
@@ -1197,7 +1346,7 @@ namespace SourceGen.AppForms {
 
             if (!File.Exists(projPathName)) {
                 string msg = string.Format(Properties.Resources.ERR_FILE_NOT_FOUND, projPathName);
-                MessageBox.Show(msg, Properties.Resources.ERR_FILE_GENERIC_CAPTION,
+                MessageBox.Show(this, msg, Properties.Resources.ERR_FILE_GENERIC_CAPTION,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -1214,9 +1363,8 @@ namespace SourceGen.AppForms {
                 // Should probably use a less-busy dialog for something simple like
                 // "permission denied", but the open file dialog handles most simple
                 // stuff directly.
-                ProjectLoadIssues dlg = new ProjectLoadIssues();
-                dlg.Messages = report.Format();
-                dlg.CanContinue = false;
+                ProjectLoadIssues dlg = new ProjectLoadIssues(report.Format(),
+                    ProjectLoadIssues.Buttons.Cancel);
                 dlg.ShowDialog();
                 // ignore dlg.DialogResult
                 dlg.Dispose();
@@ -1246,8 +1394,8 @@ namespace SourceGen.AppForms {
 
             // If there were warnings, notify the user and give the a chance to cancel.
             if (report.Count != 0) {
-                ProjectLoadIssues dlg = new ProjectLoadIssues();
-                dlg.Messages = report.Format();
+                ProjectLoadIssues dlg = new ProjectLoadIssues(report.Format(),
+                    ProjectLoadIssues.Buttons.ContinueOrCancel);
                 dlg.ShowDialog();
                 DialogResult result = dlg.DialogResult;
                 dlg.Dispose();
@@ -1325,9 +1473,7 @@ namespace SourceGen.AppForms {
         /// <param name="errorMsg">Message to display in the message box.</param>
         /// <returns>Full path of file to open.</returns>
         private string ChooseDataFile(string origPath, string errorMsg) {
-            DataFileLoadIssue dlg = new DataFileLoadIssue();
-            dlg.PathName = origPath;
-            dlg.Message = errorMsg;
+            DataFileLoadIssue dlg = new DataFileLoadIssue(origPath, errorMsg);
             dlg.ShowDialog();
             DialogResult result = dlg.DialogResult;
             dlg.Dispose();
@@ -1335,9 +1481,10 @@ namespace SourceGen.AppForms {
                 return null;
             }
 
-            OpenFileDialog fileDlg = new OpenFileDialog();
-            fileDlg.FileName = Path.GetFileName(origPath);
-            fileDlg.Filter = Properties.Resources.FILE_FILTER_ALL;
+            OpenFileDialog fileDlg = new OpenFileDialog() {
+                FileName = Path.GetFileName(origPath),
+                Filter = Properties.Resources.FILE_FILTER_ALL
+            };
             if (fileDlg.ShowDialog() != DialogResult.OK) {
                 return null;
             }
@@ -1348,28 +1495,25 @@ namespace SourceGen.AppForms {
         }
 
         // File > Save (Ctrl+S)
-        private void saveToolStripMenuItem_Click(object sender, EventArgs e) {
-            if (string.IsNullOrEmpty(mProjectPathName)) {
-                saveAsToolStripMenuItem_Click(sender, e);
-                return;
-            }
-
-            DoSave(mProjectPathName);
-        }
         private void saveToolStripButton_Click(object sender, EventArgs e) {
             saveToolStripMenuItem_Click(sender, e);
         }
-
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e) {
+            DoSave();
+        }
         // File > Save As...
         private void saveAsToolStripMenuItem_Click(object sender, EventArgs e) {
-            SaveFileDialog fileDlg = new SaveFileDialog();
+            DoSaveAs();
+        }
 
-            fileDlg.Filter = ProjectFile.FILENAME_FILTER + "|" +
-                Properties.Resources.FILE_FILTER_ALL;
-            fileDlg.FilterIndex = 1;
-            fileDlg.ValidateNames = true;
-            fileDlg.AddExtension = true;
-            fileDlg.FileName = Path.GetFileName(mDataPathName) + ProjectFile.FILENAME_EXT;
+        private bool DoSaveAs() {
+            SaveFileDialog fileDlg = new SaveFileDialog() {
+                Filter = ProjectFile.FILENAME_FILTER + "|" + Properties.Resources.FILE_FILTER_ALL,
+                FilterIndex = 1,
+                ValidateNames = true,
+                AddExtension = true,
+                FileName = Path.GetFileName(mDataPathName) + ProjectFile.FILENAME_EXT
+            };
             if (fileDlg.ShowDialog() == DialogResult.OK) {
                 string pathName = Path.GetFullPath(fileDlg.FileName);
                 Debug.WriteLine("Project save path: " + pathName);
@@ -1379,14 +1523,25 @@ namespace SourceGen.AppForms {
 
                     // add it to the title bar
                     UpdateMenuItemsAndTitle();
+                    return true;
                 }
             }
+            return false;
+        }
+
+        // Save the project.  If it hasn't been saved before, use save-as behavior instead.
+        private bool DoSave() {
+            if (string.IsNullOrEmpty(mProjectPathName)) {
+                return DoSaveAs();
+            }
+            return DoSave(mProjectPathName);
         }
 
         private bool DoSave(string pathName) {
             Debug.WriteLine("SAVING " + pathName);
             if (!ProjectFile.SerializeToFile(mProject, pathName, out string errorMessage)) {
-                MessageBox.Show(Properties.Resources.ERR_PROJECT_SAVE_FAIL + ": " + errorMessage,
+                MessageBox.Show(this,
+                    Properties.Resources.ERR_PROJECT_SAVE_FAIL + ": " + errorMessage,
                     Properties.Resources.OPERATION_FAILED,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
@@ -1411,6 +1566,12 @@ namespace SourceGen.AppForms {
         // App is closing.
         private void ProjectView_FormClosing(object sender, FormClosingEventArgs e) {
             Debug.WriteLine("Main app form closing (reason=" + e.CloseReason + ")");
+            if (mProjectControl == null) {
+                // This can be null if something failed during startup, so we're exiting
+                // the application before the UI is fully up.
+                return;
+            }
+
             if (!DoClose()) {
                 e.Cancel = true;
                 return;
@@ -1435,11 +1596,14 @@ namespace SourceGen.AppForms {
             Debug.WriteLine("ProjectView.DoClose() - dirty=" +
                 (mProject == null ? "N/A" : mProject.IsDirty.ToString()));
             if (mProject != null && mProject.IsDirty) {
-                DialogResult result = MessageBox.Show(Properties.Resources.UNSAVED_CHANGES,
-                    Properties.Resources.UNSAVED_CHANGES_CAPTION, MessageBoxButtons.OKCancel,
-                    MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                DiscardChanges dlg = new DiscardChanges();
+                DialogResult result = dlg.ShowDialog(this);
                 if (result == DialogResult.Cancel) {
                     return false;
+                } else if (result == DialogResult.Yes) {
+                    if (!DoSave()) {
+                        return false;
+                    }
                 }
             }
 
@@ -1468,7 +1632,7 @@ namespace SourceGen.AppForms {
             mCodeViewSelection = new VirtualListViewSelection();
             mDisplayList = null;
             codeListView.VirtualListSize = 0;
-            codeListView.Items.Clear();
+            //codeListView.Items.Clear();
             ShowNoProject();
             InvalidateControls(null);
 
@@ -1490,7 +1654,7 @@ namespace SourceGen.AppForms {
                 // an explanation, or have some annoying click-through.
                 //
                 // This only appears for never-saved projects, not projects with unsaved data.
-                MessageBox.Show(Properties.Resources.SAVE_BEFORE_ASM_TEXT,
+                MessageBox.Show(this, Properties.Resources.SAVE_BEFORE_ASM_TEXT,
                     Properties.Resources.SAVE_BEFORE_ASM_CAPTION,
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
@@ -1577,7 +1741,15 @@ namespace SourceGen.AppForms {
             StringBuilder sb = new StringBuilder(100);
 
             int addrAdj = mProject.CpuDef.HasAddr16 ? 6 : 9;
-            int disAdj = (format != Disassembly) ? 0 : addrAdj + 10;
+            int disAdj = 0;
+            int bytesWidth = 0;
+            if (format == Disassembly) {
+                // A limit of 8 gets us 4 bytes from dense display ("20edfd60") and 3 if spaces
+                // are included ("20 ed fd") with no excess.  We want to increase it to 11 so
+                // we can always show 4 bytes.
+                bytesWidth = (mFormatterConfig.mSpacesBetweenBytes ? 11 : 8);
+                disAdj = addrAdj + bytesWidth + 2;
+            }
 
             // Walking through the selected indices can be slow for a large file, so we
             // run through the full list and pick out the selected items with our parallel
@@ -1600,10 +1772,10 @@ namespace SourceGen.AppForms {
                                 sb.Append(": ");
                             }
 
-                            // shorten the "..."
+                            // Shorten the "...".
                             string bytesStr = parts.Bytes;
-                            if (bytesStr != null && bytesStr.Length > 8) {
-                                bytesStr = bytesStr.Substring(0, 8) + "+";
+                            if (bytesStr != null && bytesStr.Length > bytesWidth) {
+                                bytesStr = bytesStr.Substring(0, bytesWidth) + "+";
                             }
                             TextUtil.AppendPaddedString(sb, bytesStr, disAdj);
                         }
@@ -1673,8 +1845,7 @@ namespace SourceGen.AppForms {
 
         // Edit > Find... (Ctrl+F)
         private void findToolStripMenuItem_Click(object sender, EventArgs e) {
-            FindBox dlg = new FindBox();
-            dlg.TextToFind = mFindString;
+            FindBox dlg = new FindBox(mFindString);
             if (dlg.ShowDialog() == DialogResult.OK) {
                 mFindString = dlg.TextToFind;
                 mFindStartIndex = -1;
@@ -1731,7 +1902,7 @@ namespace SourceGen.AppForms {
             }
 
             // Announce that we've wrapped around, then clear the start index.
-            MessageBox.Show(Properties.Resources.FIND_REACHED_START,
+            MessageBox.Show(this, Properties.Resources.FIND_REACHED_START,
                 Properties.Resources.FIND_REACHED_START_CAPTION, MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             mFindStartIndex = -1;
@@ -1752,13 +1923,14 @@ namespace SourceGen.AppForms {
             if (!string.IsNullOrEmpty(mProjectPathName)) {
                 projectDir = Path.GetDirectoryName(mProjectPathName);
             }
-            EditProjectProperties dlg = new EditProjectProperties(projectDir);
-            dlg.SetInitialProps(mProject.ProjectProps);
-            dlg.NumFormatter = mOutputFormatter;
+            EditProjectProperties dlg = new EditProjectProperties(mProject.ProjectProps,
+                projectDir, mOutputFormatter);
             dlg.ShowDialog();
             ProjectProperties newProps = dlg.NewProps;
             dlg.Dispose();
 
+            // The dialog result doesn't matter, because the user might have hit "apply"
+            // before hitting "cancel".
             if (newProps != null) {
                 UndoableChange uc = UndoableChange.CreateProjectPropertiesChange(
                     mProject.ProjectProps, newProps);
@@ -1766,17 +1938,28 @@ namespace SourceGen.AppForms {
             }
         }
 
+        // Edit > Toggle Data Scan
+        private void toggleDataScanToolStripMenuItem_Click(object sender, EventArgs e) {
+            ProjectProperties oldProps = mProject.ProjectProps;
+            ProjectProperties newProps = new ProjectProperties(oldProps);
+            newProps.AnalysisParams.AnalyzeUncategorizedData =
+                !newProps.AnalysisParams.AnalyzeUncategorizedData;
+            UndoableChange uc = UndoableChange.CreateProjectPropertiesChange(oldProps, newProps);
+            ApplyUndoableChanges(new ChangeSet(uc));
+        }
+
         // Edit > Settings...
         private void settingsToolStripMenuItem_Click(object sender, EventArgs e) {
-            ShowAppSettings(EditAppSettings.Tab.Unknown);
+            ShowAppSettings(EditAppSettings.Tab.Unknown, AsmGen.AssemblerInfo.Id.Unknown);
         }
 
         /// <summary>
         /// Opens the app settings dialog.
         /// </summary>
         /// <param name="initialTab">Tab to present to the user.</param>
-        public void ShowAppSettings(EditAppSettings.Tab initialTab) {
-            EditAppSettings dlg = new EditAppSettings(this, initialTab);
+        public void ShowAppSettings(EditAppSettings.Tab initialTab,
+                AsmGen.AssemblerInfo.Id initialAsmId) {
+            EditAppSettings dlg = new EditAppSettings(this, initialTab, initialAsmId);
             dlg.ShowDialog();
             dlg.Dispose();
         }
@@ -1796,15 +1979,12 @@ namespace SourceGen.AppForms {
             dlg.Dispose();
         }
 
-        private void codeListView_MouseClick(object sender, MouseEventArgs e) {
-            //if (e.Button == MouseButtons.Left) {
-            //    Debug.WriteLine("LEFT CLICK");
-            //} else if (e.Button == MouseButtons.Right) {
-            //    Debug.WriteLine("RIGHT CLICK");
-            //    //ShowRightClickMenu();
-            //} else {
-            //    Debug.WriteLine("CLICK " + e.Button);
-            //}
+        private void codeListView_MouseDown(object sender, MouseEventArgs e) {
+            // MouseClick only fires for certain buttons and certain locations.  MouseDown
+            // fires for all buttons so long as the pointer is in the codeListView area.
+            if (e.Button == MouseButtons.XButton1 && navigateBackToolStripButton.Enabled) {
+                navigateBackToolStripButton_Click(sender, e);
+            }
         }
 
         private void codeListView_MouseDoubleClick(object sender, MouseEventArgs e) {
@@ -1889,32 +2069,35 @@ namespace SourceGen.AppForms {
                             // statements and header comment earlier.
                             if (line.FileOffset >= 0) {
                                 Anattrib attr = mProject.GetAnattrib(line.FileOffset);
+                                FormatDescriptor dfd = attr.DataDescriptor;
+
                                 // Does this have an operand with an in-file target offset?
+                                // (Resolve it as a numeric reference.)
                                 if (attr.OperandOffset >= 0) {
                                     // Yup, find the line for that offset and jump to it.
                                     GoToOffset(attr.OperandOffset, false, true);
-                                    //int targetIndex =
-                                    //    mDisplayList.FindLineIndexByOffset(attr.OperandOffset);
-                                    //GoToOffset(mDisplayList[targetIndex].FileOffset);
+                                } else if (dfd != null && dfd.HasSymbol) {
+                                    // Operand has a symbol, do a symbol lookup.
+                                    int labelOffset = mProject.FindLabelOffsetByName(
+                                        dfd.SymbolRef.Label);
+                                    if (labelOffset >= 0) {
+                                        GoToOffset(labelOffset, false, true);
+                                    }
                                 } else if (attr.IsDataStart || attr.IsInlineDataStart) {
                                     // If it's an Address or Symbol, we can try to resolve
-                                    // the value.
+                                    // the value.  (Symbols should have been resolved by the
+                                    // previous clause, but Address entries would not have been.)
                                     int operandOffset = DataAnalysis.GetDataOperandOffset(
                                         mProject, line.FileOffset);
                                     if (operandOffset >= 0) {
                                         GoToOffset(operandOffset, false, true);
-                                        //int targetIndex =
-                                        //    mDisplayList.FindLineIndexByOffset(operandOffset);
-                                        //GoToOffset(mDisplayList[targetIndex].FileOffset);
                                     }
                                 }
                             }
                             break;
                         case ColumnIndex.Operand:
                             if (editOperandToolStripMenuItem.Enabled) {
-                                EditOperand_Click(sender, e);
-                            } else if (editDataFormatToolStripMenuItem.Enabled) {
-                                EditData_Click(sender, e);
+                                EditInstrDataOperand_Click(sender, e);
                             }
                             break;
                         case ColumnIndex.Comment:
@@ -2061,6 +2244,9 @@ namespace SourceGen.AppForms {
             ListView.SelectedIndexCollection sel = codeListView.SelectedIndices;
             EntityCounts entityCounts;
 
+            bool editDataOperandEnabled = false;
+            bool editInstrOperandEnabled = false;
+
             // Use IsSingleItemSelected(), rather than just checking sel.Count, because we
             // want the user to be able to e.g. EditData on a multi-line string even if all
             // lines in the string are selected.
@@ -2075,11 +2261,9 @@ namespace SourceGen.AppForms {
 
                 setAddressToolStripMenuItem.Enabled =
                     (isCodeOrData || lineType == DisplayList.Line.Type.OrgDirective);
-                editOperandToolStripMenuItem.Enabled =
-                    (lineType == DisplayList.Line.Type.Code &&
-                            mProject.GetAnattrib(line.FileOffset).IsInstructionWithOperand);
-                editDataFormatToolStripMenuItem.Enabled =
-                    (lineType == DisplayList.Line.Type.Data);
+                editInstrOperandEnabled = (lineType == DisplayList.Line.Type.Code &&
+                    mProject.GetAnattrib(line.FileOffset).IsInstructionWithOperand);
+                editDataOperandEnabled = (lineType == DisplayList.Line.Type.Data);
                 editLabelToolStripMenuItem.Enabled = isCodeOrData;
                 editCommentToolStripMenuItem.Enabled = isCodeOrData;
                 editLongCommentToolStripMenuItem.Enabled =
@@ -2107,7 +2291,7 @@ namespace SourceGen.AppForms {
 
                 // Disable all single-target-only items.
                 setAddressToolStripMenuItem.Enabled = false;
-                editOperandToolStripMenuItem.Enabled = false;
+                editInstrOperandEnabled = false;
                 editLabelToolStripMenuItem.Enabled = false;
                 editCommentToolStripMenuItem.Enabled = false;
                 editLongCommentToolStripMenuItem.Enabled = false;
@@ -2118,7 +2302,7 @@ namespace SourceGen.AppForms {
 
                 if (sel.Count == 0) {
                     // Disable everything else.
-                    editDataFormatToolStripMenuItem.Enabled = false;
+                    editDataOperandEnabled = false;
                     hintAsCodeToolStripMenuItem.Enabled = false;
                     hintAsDataToolStripMenuItem.Enabled = false;
                     hintAsInlineDataToolStripMenuItem.Enabled = false;
@@ -2126,13 +2310,27 @@ namespace SourceGen.AppForms {
                 } else {
                     // Must be all data items.  Blank lines are okay.  Currently allowing
                     // control lines as well.
-                    editDataFormatToolStripMenuItem.Enabled =
+                    editDataOperandEnabled =
                         (entityCounts.mDataLines > 0 && entityCounts.mCodeLines == 0);
                 }
             }
 
+            // Enable the "edit operand" menu item if either instruction or data operand
+            // editing is allowed.
+            editOperandToolStripMenuItem.Enabled =
+                editDataOperandEnabled || editInstrOperandEnabled;
+
+            formatSplitAddressTableToolStripMenuItem.Enabled =
+                (entityCounts.mDataLines > 0 && entityCounts.mCodeLines == 0);
             toggleSingleBytesToolStripMenuItem.Enabled =
                 (entityCounts.mDataLines > 0 && entityCounts.mCodeLines == 0);
+
+            // This is insufficient -- we need to know how many bytes are selected, and
+            // whether they're already formatted as multi-byte items.  Too expensive to
+            // deal with here, so we'll need to show failure dialogs instead (ugh).
+            formatAsWordToolStripMenuItem.Enabled =
+                (entityCounts.mDataLines > 0 && entityCounts.mCodeLines == 0);
+
 
             // So long as some code or data is highlighted, allow these.  Don't worry about
             // control lines.  Disable options that would have no effect.
@@ -2340,6 +2538,13 @@ namespace SourceGen.AppForms {
             return -1;
         }
 
+
+        private void editToolStripMenuItem_DropDownOpening(object sender, EventArgs e) {
+            // Set the checkmark on Toggle Data Scan.
+            toggleDataScanToolStripMenuItem.Checked = (mProject != null) &&
+                mProject.ProjectProps.AnalysisParams.AnalyzeUncategorizedData;
+        }
+
         /// <summary>
         /// Handles an "opening" event for the codeListView's ContextMenuStrip.
         /// 
@@ -2353,7 +2558,8 @@ namespace SourceGen.AppForms {
         /// <summary>
         /// Handles an "opening" event for the ProjectView's Actions menu.
         /// 
-        /// This puts all of the Actions menu items in the Actions menu.
+        /// This puts all of the Actions menu items in the Actions menu.  We also want to call
+        /// this when the context menu closes, so that Alt-A will open the menu.
         /// </summary>
         private void ActionsMenuOpening(object sender, EventArgs e) {
             actionsToolStripMenuItem.DropDownItems.AddRange(mActionsMenuItems);
@@ -2364,13 +2570,9 @@ namespace SourceGen.AppForms {
             Debug.Assert(IsSingleItemSelected());
             int offset = mDisplayList[sel[0]].FileOffset;
 
-            EditAddress dlg = new EditAddress();
             Anattrib attr = mProject.GetAnattrib(offset);
-            dlg.MaxAddressValue = mProject.CpuDef.MaxAddressValue;
-            dlg.SetInitialAddress(attr.Address);
-            dlg.ShowDialog();
-
-            if (dlg.DialogResult == DialogResult.OK) {
+            EditAddress dlg = new EditAddress(attr.Address, mProject.CpuDef.MaxAddressValue);
+            if (dlg.ShowDialog() == DialogResult.OK) {
                 if (offset == 0 && dlg.Address < 0) {
                     // Not allowed.  The AddressMap will just put it back, which confuses
                     // the undo operation.
@@ -2395,6 +2597,16 @@ namespace SourceGen.AppForms {
             }
 
             dlg.Dispose();
+        }
+
+        // Convert generic "edit operand" request to instruction or data edit call.
+        private void EditInstrDataOperand_Click(object sender, EventArgs e) {
+            ListView.SelectedIndexCollection sel = codeListView.SelectedIndices;
+            if (mDisplayList[sel[0]].LineType == DisplayList.Line.Type.Code) {
+                EditOperand_Click(sender, e);
+            } else {
+                EditData_Click(sender, e);
+            }
         }
 
         private void EditOperand_Click(Object sender, EventArgs e) {
@@ -2521,6 +2733,64 @@ namespace SourceGen.AppForms {
             dlg.Dispose();
         }
 
+        private void FormatSplitAddressTable_Click(object sender, EventArgs e) {
+            TypedRangeSet trs = GroupedOffsetSetFromSelected();
+            if (trs.Count == 0) {
+                // shouldn't happen
+                Debug.Assert(false, "FormatSplitAddressTable found nothing to edit");
+                return;
+            }
+
+            FormatSplitAddress dlg = new FormatSplitAddress(mProject, trs, mOutputFormatter);
+
+            dlg.ShowDialog();
+            if (dlg.DialogResult == DialogResult.OK) {
+                // Start with the format descriptors.
+                ChangeSet cs = mProject.GenerateFormatMergeSet(dlg.NewFormatDescriptors);
+
+                // Add in the user labels.
+                foreach (KeyValuePair<int, Symbol> kvp in dlg.NewUserLabels) {
+                    Symbol oldUserValue = null;
+                    if (mProject.UserLabels.ContainsKey(kvp.Key)) {
+                        Debug.Assert(false, "should not be replacing label");
+                        oldUserValue = mProject.UserLabels[kvp.Key];
+                    }
+                    UndoableChange uc = UndoableChange.CreateLabelChange(kvp.Key,
+                        oldUserValue, kvp.Value);
+                    cs.Add(uc);
+                }
+
+                // Apply code hints.
+                if (dlg.WantCodeHints) {
+                    TypedRangeSet newSet = new TypedRangeSet();
+                    TypedRangeSet undoSet = new TypedRangeSet();
+
+                    foreach (int offset in dlg.AllTargetOffsets) {
+                        if (!mProject.GetAnattrib(offset).IsInstruction) {
+                            CodeAnalysis.TypeHint oldType = mProject.TypeHints[offset];
+                            if (oldType == CodeAnalysis.TypeHint.Code) {
+                                continue;       // already set
+                            }
+                            undoSet.Add(offset, (int)oldType);
+                            newSet.Add(offset, (int)CodeAnalysis.TypeHint.Code);
+                        }
+                    }
+                    if (newSet.Count != 0) {
+                        cs.Add(UndoableChange.CreateTypeHintChange(undoSet, newSet));
+                    }
+                }
+
+                // Finally, apply the change.
+                if (cs.Count != 0) {
+                    ApplyUndoableChanges(cs);
+                } else {
+                    Debug.WriteLine("No changes found");
+                }
+            }
+
+            dlg.Dispose();
+        }
+
         private void ToggleSingleBytes_Click(object sender, EventArgs e) {
             TypedRangeSet trs = GroupedOffsetSetFromSelected();
             if (trs.Count == 0) {
@@ -2571,6 +2841,94 @@ namespace SourceGen.AppForms {
             }
         }
 
+        private void formatAsWordToolStripMenuItem_Click(object sender, EventArgs e) {
+            TypedRangeSet trs = GroupedOffsetSetFromSelected();
+            if (trs.Count == 0) {
+                Debug.Assert(false, "nothing to edit");         // shouldn't happen
+                return;
+            }
+
+            // If the user has only selected a single byte, we want to add the following byte
+            // to the selection, then proceed as usual.  We can't simply modify the ListView
+            // selection because the following item might be an auto-detected string or fill,
+            // and we'd be adding multiple bytes.  We have to be careful when grabbing the byte
+            // in case there's a region-split at that point (e.g. user label or .ORG).
+            //
+            // We could expand this to allow multiple regions, each of which is a single byte,
+            // but we'd need to deal with the case where the user selects two adjacent bytes that
+            // cross a region boundary.
+            if (trs.RangeCount == 1) {
+                // Exactly one range entry.  Check its size.
+                IEnumerator<TypedRangeSet.TypedRange> checkIter = trs.RangeListIterator;
+                checkIter.MoveNext();
+                TypedRangeSet.TypedRange rng = checkIter.Current;
+                if (rng.Low == rng.High && rng.Low < mProject.FileDataLength - 1) {
+                    // Single byte selected.  Check to see if it's okay to grab the next byte.
+                    Anattrib thisAttr = mProject.GetAnattrib(rng.Low);
+                    Debug.Assert(thisAttr.DataDescriptor.Length == 1);
+
+                    int nextOffset = rng.Low + 1;
+                    Anattrib nextAttr = mProject.GetAnattrib(nextOffset);
+                    // This must match what GroupedOffsetSetFromSelected() does.
+                    if (!mProject.UserLabels.ContainsKey(nextOffset) &&
+                            !mProject.HasCommentOrNote(nextOffset) &&
+                            thisAttr.Address == nextAttr.Address - 1) {
+                        // Good to go.
+                        Debug.WriteLine("Grabbing second byte from +" + nextOffset.ToString("x6"));
+                        trs.Add(nextOffset, rng.Type);
+                    }
+                }
+            }
+
+            // Confirm that every selected byte is a single-byte data item (either set by
+            // the user or as part of the uncategorized data scan).
+            foreach (TypedRangeSet.Tuple tup in trs) {
+                FormatDescriptor dfd = mProject.GetAnattrib(tup.Value).DataDescriptor;
+                if (dfd != null && dfd.Length != 1) {
+                    Debug.WriteLine("Can't format as word: offset +" + tup.Value.ToString("x6") +
+                        " has len=" + dfd.Length + " (must be 1)");
+                    string msg = string.Format(Properties.Resources.INVALID_FORMAT_WORD_SEL_NON1,
+                        "\r\n\r\n");
+                    MessageBox.Show(this, msg,
+                        Properties.Resources.INVALID_FORMAT_WORD_SEL_CAPTION,
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
+            // Confirm that, in each region, an even number of bytes are selected.
+            IEnumerator<TypedRangeSet.TypedRange> rngIter = trs.RangeListIterator;
+            while (rngIter.MoveNext()) {
+                TypedRangeSet.TypedRange rng = rngIter.Current;
+                int rangeLen = rng.High - rng.Low + 1;
+                if ((rangeLen & 0x01) != 0) {
+                    string msg = string.Format(Properties.Resources.INVALID_FORMAT_WORD_SEL_UNEVEN,
+                        trs.RangeCount);
+                    MessageBox.Show(this, msg,
+                        Properties.Resources.INVALID_FORMAT_WORD_SEL_CAPTION,
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
+            // Selection is good, generate changes.
+            SortedList<int, FormatDescriptor> newFmts = new SortedList<int, FormatDescriptor>();
+            rngIter.Reset();
+            FormatDescriptor newDfd = FormatDescriptor.Create(2, FormatDescriptor.Type.NumericLE,
+                FormatDescriptor.SubType.None);
+            while (rngIter.MoveNext()) {
+                TypedRangeSet.TypedRange rng = rngIter.Current;
+                for (int i = rng.Low; i <= rng.High; i += 2) {
+                    newFmts.Add(i, newDfd);
+                }
+            }
+
+            ChangeSet cs = mProject.GenerateFormatMergeSet(newFmts);
+            if (cs.Count != 0) {
+                ApplyUndoableChanges(cs);
+            }
+        }
+
         private void DeleteNoteComment_Click(object sender, EventArgs e) {
             Debug.Assert(IsSingleItemSelected());
             ListView.SelectedIndexCollection sel = codeListView.SelectedIndices;
@@ -2603,13 +2961,10 @@ namespace SourceGen.AppForms {
             Debug.Assert(IsSingleItemSelected());
             int offset = mDisplayList[sel[0]].FileOffset;
 
-            EditLabel dlg = new EditLabel(mProject.SymbolTable);
             Anattrib attr = mProject.GetAnattrib(offset);
+            EditLabel dlg = new EditLabel(attr.Symbol, attr.Address, mProject.SymbolTable);
 
-            dlg.LabelSym = attr.Symbol;
-            dlg.Address = attr.Address;
-            dlg.ShowDialog();
-            if (dlg.DialogResult == DialogResult.OK) {
+            if (dlg.ShowDialog() == DialogResult.OK) {
                 // NOTE: if label matching is case-insensitive, we want to allow a situation
                 // where a label is being renamed from "FOO" to "Foo".  (We should be able to
                 // test for object equality on the Symbol.)
@@ -2638,11 +2993,9 @@ namespace SourceGen.AppForms {
             Debug.Assert(IsSingleItemSelected());
             int offset = mDisplayList[sel[0]].FileOffset;
 
-            EditStatusFlags dlg = new EditStatusFlags();
-            dlg.HasEmuFlag = mProject.CpuDef.HasEmuFlag;
-            dlg.FlagValue = mProject.StatusFlagOverrides[offset];
-            dlg.ShowDialog();
-            if (dlg.DialogResult == DialogResult.OK) {
+            EditStatusFlags dlg = new EditStatusFlags(mProject.StatusFlagOverrides[offset],
+                mProject.CpuDef.HasEmuFlag);
+            if (dlg.ShowDialog() == DialogResult.OK) {
                 if (dlg.FlagValue != mProject.StatusFlagOverrides[offset]) {
                     UndoableChange uc = UndoableChange.CreateStatusFlagChange(offset,
                         mProject.StatusFlagOverrides[offset], dlg.FlagValue);
@@ -2659,11 +3012,9 @@ namespace SourceGen.AppForms {
             Debug.Assert(IsSingleItemSelected());
             int offset = mDisplayList[sel[0]].FileOffset;
 
-            EditComment dlg = new EditComment();
-            string oldComment = dlg.Comment = mProject.Comments[offset];
-            dlg.ShowDialog();
-
-            if (dlg.DialogResult == DialogResult.OK) {
+            string oldComment = mProject.Comments[offset];
+            EditComment dlg = new EditComment(oldComment);
+            if (dlg.ShowDialog() == DialogResult.OK) {
                 if (!oldComment.Equals(dlg.Comment)) {
                     Debug.WriteLine("Changing comment at +" + offset.ToString("x6"));
 
@@ -2760,19 +3111,33 @@ namespace SourceGen.AppForms {
         }
 
         private void MarkAsCode_Click(Object sender, EventArgs e) {
-            MarkAsType(CodeAnalysis.TypeHint.Code);
+            MarkAsType(CodeAnalysis.TypeHint.Code, true);
         }
         private void MarkAsData_Click(Object sender, EventArgs e) {
-            MarkAsType(CodeAnalysis.TypeHint.Data);
+            MarkAsType(CodeAnalysis.TypeHint.Data, true);
         }
         private void MarkAsInlineData_Click(Object sender, EventArgs e) {
-            MarkAsType(CodeAnalysis.TypeHint.InlineData);
+            MarkAsType(CodeAnalysis.TypeHint.InlineData, false);
         }
         private void MarkAsNoHint_Click(Object sender, EventArgs e) {
-            MarkAsType(CodeAnalysis.TypeHint.NoHint);
+            MarkAsType(CodeAnalysis.TypeHint.NoHint, false);
         }
-        private void MarkAsType(CodeAnalysis.TypeHint hint) {
-            RangeSet sel = OffsetSetFromSelected();
+        private void MarkAsType(CodeAnalysis.TypeHint hint, bool firstByteOnly) {
+            RangeSet sel;
+
+            if (firstByteOnly) {
+                sel = new RangeSet();
+                foreach (int index in codeListView.SelectedIndices) {
+                    int offset = mDisplayList[index].FileOffset;
+                    if (offset >= 0) {
+                        // Not interested in the header stuff for hinting.
+                        sel.Add(offset);
+                    }
+                }
+            } else {
+                sel = OffsetSetFromSelected();
+            }
+
             TypedRangeSet newSet = new TypedRangeSet();
             TypedRangeSet undoSet = new TypedRangeSet();
 
@@ -2805,7 +3170,7 @@ namespace SourceGen.AppForms {
                 // Create and show modeless dialog.  This one is "always on top" by default,
                 // to allow the user to click around to various points.
                 mHexDumpDialog = new Tools.HexDumpViewer(mProject.FileData, mOutputFormatter);
-                mHexDumpDialog.OnWindowClosing += (arg) => {
+                mHexDumpDialog.OnWindowClosing += (sender1, e1) => {
                     Debug.WriteLine("Hex dump dialog closed");
                     //showHexDumpToolStripMenuItem.Checked = false;
                     mHexDumpDialog = null;
@@ -2836,7 +3201,7 @@ namespace SourceGen.AppForms {
             // Show or hide the modeless dialog.
             if (mAsciiChartDialog == null) {
                 Tools.AsciiChart dlg = new Tools.AsciiChart();
-                dlg.OnWindowClosing += (arg) => {
+                dlg.OnWindowClosing += (sender1, e1) => {
                     Debug.WriteLine("ASCII chart closed");
                     aSCIIChartToolStripMenuItem.Checked = false;
                     mAsciiChartDialog = null;
@@ -2945,16 +3310,15 @@ namespace SourceGen.AppForms {
                     // The code does "LDA table,X / STA / LDA table+1,X / STA", which puts auto
                     // labels at the first two addresses -- splitting the region.  That's good
                     // for the uncategorized data analyzer, but very annoying if you want to
-                    // slap a 16-bit numeric format on all entries.
+                    // slap a 16-bit numeric format on all entries in a table.
                     groupNum++;
                 } else if (mProject.HasCommentOrNote(offset)) {
                     // Don't carry across a long comment or note.
                     groupNum++;
                 } else if (attr.Address != expectedAddr) {
                     // For a contiguous selection, this should only happen if there's a .ORG
-                    // address change.  For a selection that skips code/data lines this is
-                    // expected.  In the later case, incrementing the group number is
-                    // unnecessary but harmless.
+                    // address change.  For non-contiguous selection this is expected.  In the
+                    // latter case, incrementing the group number is unnecessary but harmless.
                     Debug.WriteLine("Address break: " + attr.Address + " vs. " + expectedAddr);
                     //Debug.Assert(mProject.AddrMap.Get(offset) >= 0);
 
@@ -3108,7 +3472,7 @@ namespace SourceGen.AppForms {
         /// Saves the code list column widths into AppSettings.
         /// </summary>
         /// <returns></returns>
-        public void SaveCodeListColumnWidths() {
+        public void SerializeCodeListColumnWidths() {
             CodeListColumnWidths widths = new CodeListColumnWidths();
             for (int i = 0; i < CodeListColumnWidths.NUM_COLUMNS; i++) {
                 widths.Width[i] = codeListView.Columns[i].Width;
@@ -3130,11 +3494,7 @@ namespace SourceGen.AppForms {
 
         private void codeListView_ColumnWidthChanged(object sender,
                 ColumnWidthChangedEventArgs e) {
-            //Debug.WriteLine("Column width changed: " + e.ColumnIndex);
-            // This fires during initial setup when things don't have widths.  A little
-            // risky to save the widths off now; would be safer to do it right before we write
-            // the settings file.
-            SaveCodeListColumnWidths();
+            AppSettings.Global.Dirty = true;
         }
 
         private void codeListView_DrawColumnHeader(object sender,
@@ -3403,8 +3763,8 @@ namespace SourceGen.AppForms {
             // Save a copy of the column header names as entered in the designer.
             mSymbolColumnHeaderNames = new string[3];
             mSymbolColumnHeaderNames[0] = symbolTypeColumnHeader.Text;
-            mSymbolColumnHeaderNames[1] = symbolNameColumnHeader.Text;
-            mSymbolColumnHeaderNames[2] = symbolValueColumnHeader.Text;
+            mSymbolColumnHeaderNames[1] = symbolValueColumnHeader.Text;
+            mSymbolColumnHeaderNames[2] = symbolNameColumnHeader.Text;
             SetSymbolColumnHeaders();
         }
 
@@ -3453,9 +3813,9 @@ namespace SourceGen.AppForms {
             ListViewItem lvi = new ListViewItem();
 
             lvi.Text = sym.SourceTypeString;
-            mSymbolSubArray[0] = new ListViewItem.ListViewSubItem(lvi, sym.Label);
-            mSymbolSubArray[1] = new ListViewItem.ListViewSubItem(lvi,
+            mSymbolSubArray[0] = new ListViewItem.ListViewSubItem(lvi,
                 mOutputFormatter.FormatHexValue(sym.Value, 0));
+            mSymbolSubArray[1] = new ListViewItem.ListViewSubItem(lvi, sym.Label);
             lvi.SubItems.AddRange(mSymbolSubArray);
             return lvi;
         }
@@ -3490,8 +3850,8 @@ namespace SourceGen.AppForms {
             int row = info.Item.Index;
             Symbol sym = mSymbolSubset.GetSubsetItem(row);
 
-            if (sym.SymbolSource == Symbol.Source.Auto || sym.SymbolSource == Symbol.Source.User) {
-                int offset = mProject.FindLabelByName(sym.Label);
+            if (sym.IsInternalLabel) {
+                int offset = mProject.FindLabelOffsetByName(sym.Label);
                 if (offset >= 0) {
                     GoToOffset(offset, false, true);
                     codeListView.Focus();
@@ -3520,11 +3880,11 @@ namespace SourceGen.AppForms {
             symbolTypeColumnHeader.Text =
                 (sortCol == SymbolTableSubset.SortCol.Type ? sortStr : "") +
                 mSymbolColumnHeaderNames[0];
-            symbolNameColumnHeader.Text =
-                (sortCol == SymbolTableSubset.SortCol.Name ? sortStr : "") +
-                mSymbolColumnHeaderNames[1];
             symbolValueColumnHeader.Text =
                 (sortCol == SymbolTableSubset.SortCol.Value ? sortStr : "") +
+                mSymbolColumnHeaderNames[1];
+            symbolNameColumnHeader.Text =
+                (sortCol == SymbolTableSubset.SortCol.Name ? sortStr : "") +
                 mSymbolColumnHeaderNames[2];
         }
 
@@ -3813,8 +4173,14 @@ namespace SourceGen.AppForms {
 
             lvi.Text = mOutputFormatter.FormatOffset24(offset);
             lvi.Tag = mlc;
-            mNotesSubArray[0] = new ListViewItem.ListViewSubItem(lvi,
-                mlc.Text.Replace("\r\n", " \u2022 "));
+            // Replace line break with bullet.  If there's a single CRLF at the end, strip it.
+            string nocrlfStr;
+            if (mlc.Text.EndsWith("\r\n")) {
+                nocrlfStr = mlc.Text.Substring(0, mlc.Text.Length - 1).Replace("\r\n", " \u2022 ");
+            } else {
+                nocrlfStr = mlc.Text.Replace("\r\n", " \u2022 ");
+            }
+            mNotesSubArray[0] = new ListViewItem.ListViewSubItem(lvi, nocrlfStr);
             lvi.SubItems.AddRange(mNotesSubArray);
             return lvi;
         }
@@ -4044,6 +4410,9 @@ namespace SourceGen.AppForms {
             if (line.OffsetSpan == 0) {
                 sb.AppendFormat(Properties.Resources.FMT_INFO_LINE_SUM_NON,
                     lineIndex, lineTypeStr);
+#if DEBUG
+                sb.Append(" [offset=+" + line.FileOffset.ToString("x6") + "]");
+#endif
                 if (!string.IsNullOrEmpty(extraStr)) {
                     sb.Append("\r\n\r\n");
                     sb.Append(extraStr);
@@ -4133,9 +4502,9 @@ namespace SourceGen.AppForms {
                 string shortDesc = mOpDesc.GetShortDescription(op.Mnemonic);
                 if (!string.IsNullOrEmpty(shortDesc)) {
                     if (op.IsUndocumented) {
-                        sb.Append("\u23e9[*] ");
+                        sb.Append("\u25b6[*] ");
                     } else {
-                        sb.Append("\u23e9 ");
+                        sb.Append("\u25b6 ");
                     }
                     sb.Append(shortDesc);
                     string addrStr = mOpDesc.GetAddressModeDescription(op.AddrMode);
@@ -4202,9 +4571,10 @@ namespace SourceGen.AppForms {
         #region Tools items
 
         private void hexDumpToolStripMenuItem_Click(object sender, EventArgs e) {
-            OpenFileDialog fileDlg = new OpenFileDialog();
-            fileDlg.Filter = Properties.Resources.FILE_FILTER_ALL;
-            fileDlg.FilterIndex = 1;
+            OpenFileDialog fileDlg = new OpenFileDialog() {
+                Filter = Properties.Resources.FILE_FILTER_ALL,
+                FilterIndex = 1
+            };
             if (fileDlg.ShowDialog() != DialogResult.OK) {
                 return;
             }
@@ -4213,7 +4583,7 @@ namespace SourceGen.AppForms {
             if (fi.Length > Tools.HexDumpViewer.MAX_LENGTH) {
                 string msg = string.Format(Properties.Resources.ERR_FILE_TOO_LARGE,
                     Tools.HexDumpViewer.MAX_LENGTH);
-                MessageBox.Show(msg, Properties.Resources.OPEN_DATA_FAIL_CAPTION,
+                MessageBox.Show(this, msg, Properties.Resources.OPEN_DATA_FAIL_CAPTION,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -4221,7 +4591,7 @@ namespace SourceGen.AppForms {
             try {
                 data = File.ReadAllBytes(fileName);
             } catch (Exception ex) {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show(this, ex.Message);
                 return;
             }
 
@@ -4259,7 +4629,7 @@ namespace SourceGen.AppForms {
                 Tools.ShowText dlg = new Tools.ShowText();
                 dlg.Title = "Undo/Redo History";
                 dlg.BodyText = mProject.DebugGetUndoRedoHistory();
-                dlg.OnWindowClosing += (arg) => {
+                dlg.OnWindowClosing += (sender1, e1) => {
                     Debug.WriteLine("Undo/redo dialog closed");
                     showUndoRedoHistoryToolStripMenuItem.Checked = false;
                     mShowUndoRedoHistoryDialog = null;
@@ -4285,7 +4655,7 @@ namespace SourceGen.AppForms {
                 } else {
                     dlg.BodyText = mGenerationLog.WriteToString();
                 }
-                dlg.OnWindowClosing += (arg) => {
+                dlg.OnWindowClosing += (sender1, e1) => {
                         Debug.WriteLine("Analyzer output dialog closed");
                         showAnalyzerOutputToolStripMenuItem.Checked = false;
                         mShowAnalyzerOutputDialog = null;
@@ -4307,7 +4677,7 @@ namespace SourceGen.AppForms {
                 Tools.ShowText dlg = new Tools.ShowText();
                 dlg.Title = "Analysis Timers";
                 dlg.BodyText = "(no data yet)";
-                dlg.OnWindowClosing += (arg) => {
+                dlg.OnWindowClosing += (sender1, e1) => {
                     Debug.WriteLine("Analysis timers dialog closed");
                     showAnalysisTimersToolStripMenuItem.Checked = false;
                     mShowAnalysisTimersDialog = null;

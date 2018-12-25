@@ -43,6 +43,8 @@ namespace SourceGen.AppForms {
             this.applyButton = new System.Windows.Forms.Button();
             this.settingsTabControl = new System.Windows.Forms.TabControl();
             this.codeViewTabPage = new System.Windows.Forms.TabPage();
+            this.codeViewMiscGroupBox = new System.Windows.Forms.GroupBox();
+            this.spacesBetweenBytesCheckBox = new System.Windows.Forms.CheckBox();
             this.clipboardGroupBox = new System.Windows.Forms.GroupBox();
             this.clipboardFormatLabel = new System.Windows.Forms.Label();
             this.clipboardFormatComboBox = new System.Windows.Forms.ComboBox();
@@ -71,27 +73,29 @@ namespace SourceGen.AppForms {
             this.showCol5 = new System.Windows.Forms.Button();
             this.showCol4 = new System.Windows.Forms.Button();
             this.asmConfigTabPage = new System.Windows.Forms.TabPage();
+            this.configureAsmGroupBox = new System.Windows.Forms.GroupBox();
+            this.asmColWidthIdLabel = new System.Windows.Forms.Label();
+            this.asmConfigAssemblerLabel = new System.Windows.Forms.Label();
+            this.asmCommentColWidthTextBox = new System.Windows.Forms.TextBox();
+            this.asmOperandColWidthTextBox = new System.Windows.Forms.TextBox();
+            this.asmOpcodeColWidthTextBox = new System.Windows.Forms.TextBox();
+            this.asmLabelColWidthTextBox = new System.Windows.Forms.TextBox();
+            this.asmColWidthLabel = new System.Windows.Forms.Label();
+            this.asmExeLabel = new System.Windows.Forms.Label();
+            this.asmConfigComboBox = new System.Windows.Forms.ComboBox();
+            this.asmExePathTextBox = new System.Windows.Forms.TextBox();
+            this.asmExeBrowseButton = new System.Windows.Forms.Button();
             this.showCycleCountsCheckBox = new System.Windows.Forms.CheckBox();
             this.configAsmGenLabel = new System.Windows.Forms.Label();
             this.longLabelNewLineCheckBox = new System.Windows.Forms.CheckBox();
             this.showAsmIdentCheckBox = new System.Windows.Forms.CheckBox();
             this.disableLabelLocalizationCheckBox = new System.Windows.Forms.CheckBox();
-            this.clearMerlin32Button = new System.Windows.Forms.Button();
-            this.clearCc65Button = new System.Windows.Forms.Button();
-            this.browseMerlin32Button = new System.Windows.Forms.Button();
-            this.browseCc65Button = new System.Windows.Forms.Button();
-            this.cc65PathTextBox = new System.Windows.Forms.TextBox();
-            this.merlin32PathTextBox = new System.Windows.Forms.TextBox();
-            this.asmMerln32Label = new System.Windows.Forms.Label();
-            this.asmCc65Label = new System.Windows.Forms.Label();
-            this.asmExplanationLabel = new System.Windows.Forms.Label();
             this.displayFormatTabPage = new System.Windows.Forms.TabPage();
             this.fmtExplanationLabel = new System.Windows.Forms.Label();
             this.quickDisplayFormatGroup = new System.Windows.Forms.GroupBox();
-            this.quickFmtMerlin32Button = new System.Windows.Forms.Button();
-            this.quickFmtCc65Button = new System.Windows.Forms.Button();
+            this.displayFmtQuickComboBox = new System.Windows.Forms.ComboBox();
+            this.displayFmtSetButton = new System.Windows.Forms.Button();
             this.quickFmtDefaultButton = new System.Windows.Forms.Button();
-            this.useMerlinExpressions = new System.Windows.Forms.CheckBox();
             this.operandWidthGroupBox = new System.Windows.Forms.GroupBox();
             this.disambPrefix24TextBox = new System.Windows.Forms.TextBox();
             this.disambPrefix16TextBox = new System.Windows.Forms.TextBox();
@@ -105,8 +109,8 @@ namespace SourceGen.AppForms {
             this.disambSuffix16TextBox = new System.Windows.Forms.TextBox();
             this.pseudoOpTabPage = new System.Windows.Forms.TabPage();
             this.quickPseudoSetGroup = new System.Windows.Forms.GroupBox();
-            this.quickPseudoMerlin32 = new System.Windows.Forms.Button();
-            this.quickPseudoCc65Button = new System.Windows.Forms.Button();
+            this.pseudoOpSetButton = new System.Windows.Forms.Button();
+            this.pseudoOpQuickComboBox = new System.Windows.Forms.ComboBox();
             this.quickPseudoDefaultButton = new System.Windows.Forms.Button();
             this.strDciHiTextBox = new System.Windows.Forms.TextBox();
             this.strDciHiLabel = new System.Windows.Forms.Label();
@@ -153,13 +157,17 @@ namespace SourceGen.AppForms {
             this.defineData1Label = new System.Windows.Forms.Label();
             this.equDirectiveTextBox = new System.Windows.Forms.TextBox();
             this.equDirectiveLabel = new System.Windows.Forms.Label();
+            this.expressionStyleLabel = new System.Windows.Forms.Label();
+            this.expressionStyleComboBox = new System.Windows.Forms.ComboBox();
             this.settingsTabControl.SuspendLayout();
             this.codeViewTabPage.SuspendLayout();
+            this.codeViewMiscGroupBox.SuspendLayout();
             this.clipboardGroupBox.SuspendLayout();
             this.upperCaseGroupBox.SuspendLayout();
             this.codeViewFontGroupBox.SuspendLayout();
             this.columnVisGroup.SuspendLayout();
             this.asmConfigTabPage.SuspendLayout();
+            this.configureAsmGroupBox.SuspendLayout();
             this.displayFormatTabPage.SuspendLayout();
             this.quickDisplayFormatGroup.SuspendLayout();
             this.operandWidthGroupBox.SuspendLayout();
@@ -174,7 +182,7 @@ namespace SourceGen.AppForms {
             this.cancelButton.Location = new System.Drawing.Point(537, 406);
             this.cancelButton.Name = "cancelButton";
             this.cancelButton.Size = new System.Drawing.Size(75, 23);
-            this.cancelButton.TabIndex = 3;
+            this.cancelButton.TabIndex = 0;
             this.cancelButton.Text = "Cancel";
             this.cancelButton.UseVisualStyleBackColor = true;
             // 
@@ -185,7 +193,7 @@ namespace SourceGen.AppForms {
             this.okButton.Location = new System.Drawing.Point(456, 406);
             this.okButton.Name = "okButton";
             this.okButton.Size = new System.Drawing.Size(75, 23);
-            this.okButton.TabIndex = 2;
+            this.okButton.TabIndex = 3;
             this.okButton.Text = "OK";
             this.okButton.UseVisualStyleBackColor = true;
             this.okButton.Click += new System.EventHandler(this.okButton_Click);
@@ -196,7 +204,7 @@ namespace SourceGen.AppForms {
             this.applyButton.Location = new System.Drawing.Point(354, 406);
             this.applyButton.Name = "applyButton";
             this.applyButton.Size = new System.Drawing.Size(75, 23);
-            this.applyButton.TabIndex = 1;
+            this.applyButton.TabIndex = 2;
             this.applyButton.Text = "Apply";
             this.applyButton.UseVisualStyleBackColor = true;
             this.applyButton.Click += new System.EventHandler(this.applyButton_Click);
@@ -214,10 +222,11 @@ namespace SourceGen.AppForms {
             this.settingsTabControl.Name = "settingsTabControl";
             this.settingsTabControl.SelectedIndex = 0;
             this.settingsTabControl.Size = new System.Drawing.Size(622, 398);
-            this.settingsTabControl.TabIndex = 0;
+            this.settingsTabControl.TabIndex = 1;
             // 
             // codeViewTabPage
             // 
+            this.codeViewTabPage.Controls.Add(this.codeViewMiscGroupBox);
             this.codeViewTabPage.Controls.Add(this.clipboardGroupBox);
             this.codeViewTabPage.Controls.Add(this.enableDebugCheckBox);
             this.codeViewTabPage.Controls.Add(this.upperCaseGroupBox);
@@ -230,6 +239,27 @@ namespace SourceGen.AppForms {
             this.codeViewTabPage.TabIndex = 0;
             this.codeViewTabPage.Text = "Code View";
             this.codeViewTabPage.UseVisualStyleBackColor = true;
+            // 
+            // codeViewMiscGroupBox
+            // 
+            this.codeViewMiscGroupBox.Controls.Add(this.spacesBetweenBytesCheckBox);
+            this.codeViewMiscGroupBox.Location = new System.Drawing.Point(406, 101);
+            this.codeViewMiscGroupBox.Name = "codeViewMiscGroupBox";
+            this.codeViewMiscGroupBox.Size = new System.Drawing.Size(200, 47);
+            this.codeViewMiscGroupBox.TabIndex = 5;
+            this.codeViewMiscGroupBox.TabStop = false;
+            this.codeViewMiscGroupBox.Text = "Miscellaneous";
+            // 
+            // spacesBetweenBytesCheckBox
+            // 
+            this.spacesBetweenBytesCheckBox.AutoSize = true;
+            this.spacesBetweenBytesCheckBox.Location = new System.Drawing.Point(7, 20);
+            this.spacesBetweenBytesCheckBox.Name = "spacesBetweenBytesCheckBox";
+            this.spacesBetweenBytesCheckBox.Size = new System.Drawing.Size(158, 17);
+            this.spacesBetweenBytesCheckBox.TabIndex = 0;
+            this.spacesBetweenBytesCheckBox.Text = "Add spaces in bytes column";
+            this.spacesBetweenBytesCheckBox.UseVisualStyleBackColor = true;
+            this.spacesBetweenBytesCheckBox.CheckedChanged += new System.EventHandler(this.spacesBetweenBytesCheckBox_CheckedChanged);
             // 
             // clipboardGroupBox
             // 
@@ -401,7 +431,7 @@ namespace SourceGen.AppForms {
             // 
             // selectFontButton
             // 
-            this.selectFontButton.Location = new System.Drawing.Point(6, 60);
+            this.selectFontButton.Location = new System.Drawing.Point(6, 58);
             this.selectFontButton.Name = "selectFontButton";
             this.selectFontButton.Size = new System.Drawing.Size(125, 23);
             this.selectFontButton.TabIndex = 2;
@@ -519,20 +549,12 @@ namespace SourceGen.AppForms {
             // 
             // asmConfigTabPage
             // 
+            this.asmConfigTabPage.Controls.Add(this.configureAsmGroupBox);
             this.asmConfigTabPage.Controls.Add(this.showCycleCountsCheckBox);
             this.asmConfigTabPage.Controls.Add(this.configAsmGenLabel);
             this.asmConfigTabPage.Controls.Add(this.longLabelNewLineCheckBox);
             this.asmConfigTabPage.Controls.Add(this.showAsmIdentCheckBox);
             this.asmConfigTabPage.Controls.Add(this.disableLabelLocalizationCheckBox);
-            this.asmConfigTabPage.Controls.Add(this.clearMerlin32Button);
-            this.asmConfigTabPage.Controls.Add(this.clearCc65Button);
-            this.asmConfigTabPage.Controls.Add(this.browseMerlin32Button);
-            this.asmConfigTabPage.Controls.Add(this.browseCc65Button);
-            this.asmConfigTabPage.Controls.Add(this.cc65PathTextBox);
-            this.asmConfigTabPage.Controls.Add(this.merlin32PathTextBox);
-            this.asmConfigTabPage.Controls.Add(this.asmMerln32Label);
-            this.asmConfigTabPage.Controls.Add(this.asmCc65Label);
-            this.asmConfigTabPage.Controls.Add(this.asmExplanationLabel);
             this.asmConfigTabPage.Location = new System.Drawing.Point(4, 22);
             this.asmConfigTabPage.Name = "asmConfigTabPage";
             this.asmConfigTabPage.Padding = new System.Windows.Forms.Padding(3);
@@ -541,13 +563,135 @@ namespace SourceGen.AppForms {
             this.asmConfigTabPage.Text = "Asm Config";
             this.asmConfigTabPage.UseVisualStyleBackColor = true;
             // 
+            // configureAsmGroupBox
+            // 
+            this.configureAsmGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.configureAsmGroupBox.Controls.Add(this.asmColWidthIdLabel);
+            this.configureAsmGroupBox.Controls.Add(this.asmConfigAssemblerLabel);
+            this.configureAsmGroupBox.Controls.Add(this.asmCommentColWidthTextBox);
+            this.configureAsmGroupBox.Controls.Add(this.asmOperandColWidthTextBox);
+            this.configureAsmGroupBox.Controls.Add(this.asmOpcodeColWidthTextBox);
+            this.configureAsmGroupBox.Controls.Add(this.asmLabelColWidthTextBox);
+            this.configureAsmGroupBox.Controls.Add(this.asmColWidthLabel);
+            this.configureAsmGroupBox.Controls.Add(this.asmExeLabel);
+            this.configureAsmGroupBox.Controls.Add(this.asmConfigComboBox);
+            this.configureAsmGroupBox.Controls.Add(this.asmExePathTextBox);
+            this.configureAsmGroupBox.Controls.Add(this.asmExeBrowseButton);
+            this.configureAsmGroupBox.Location = new System.Drawing.Point(6, 6);
+            this.configureAsmGroupBox.Name = "configureAsmGroupBox";
+            this.configureAsmGroupBox.Size = new System.Drawing.Size(602, 121);
+            this.configureAsmGroupBox.TabIndex = 0;
+            this.configureAsmGroupBox.TabStop = false;
+            this.configureAsmGroupBox.Text = "Assembler Configuration";
+            // 
+            // asmColWidthIdLabel
+            // 
+            this.asmColWidthIdLabel.AutoSize = true;
+            this.asmColWidthIdLabel.Location = new System.Drawing.Point(371, 88);
+            this.asmColWidthIdLabel.Name = "asmColWidthIdLabel";
+            this.asmColWidthIdLabel.Size = new System.Drawing.Size(171, 13);
+            this.asmColWidthIdLabel.TabIndex = 10;
+            this.asmColWidthIdLabel.Text = "(label, opcode, operand, comment)";
+            // 
+            // asmConfigAssemblerLabel
+            // 
+            this.asmConfigAssemblerLabel.AutoSize = true;
+            this.asmConfigAssemblerLabel.Location = new System.Drawing.Point(27, 22);
+            this.asmConfigAssemblerLabel.Name = "asmConfigAssemblerLabel";
+            this.asmConfigAssemblerLabel.Size = new System.Drawing.Size(58, 13);
+            this.asmConfigAssemblerLabel.TabIndex = 0;
+            this.asmConfigAssemblerLabel.Text = "Assembler:";
+            // 
+            // asmCommentColWidthTextBox
+            // 
+            this.asmCommentColWidthTextBox.Location = new System.Drawing.Point(301, 85);
+            this.asmCommentColWidthTextBox.Name = "asmCommentColWidthTextBox";
+            this.asmCommentColWidthTextBox.Size = new System.Drawing.Size(64, 20);
+            this.asmCommentColWidthTextBox.TabIndex = 9;
+            this.asmCommentColWidthTextBox.TextChanged += new System.EventHandler(this.AsmConfig_TextChanged);
+            // 
+            // asmOperandColWidthTextBox
+            // 
+            this.asmOperandColWidthTextBox.Location = new System.Drawing.Point(231, 85);
+            this.asmOperandColWidthTextBox.Name = "asmOperandColWidthTextBox";
+            this.asmOperandColWidthTextBox.Size = new System.Drawing.Size(64, 20);
+            this.asmOperandColWidthTextBox.TabIndex = 8;
+            this.asmOperandColWidthTextBox.TextChanged += new System.EventHandler(this.AsmConfig_TextChanged);
+            // 
+            // asmOpcodeColWidthTextBox
+            // 
+            this.asmOpcodeColWidthTextBox.Location = new System.Drawing.Point(161, 85);
+            this.asmOpcodeColWidthTextBox.Name = "asmOpcodeColWidthTextBox";
+            this.asmOpcodeColWidthTextBox.Size = new System.Drawing.Size(64, 20);
+            this.asmOpcodeColWidthTextBox.TabIndex = 7;
+            this.asmOpcodeColWidthTextBox.TextChanged += new System.EventHandler(this.AsmConfig_TextChanged);
+            // 
+            // asmLabelColWidthTextBox
+            // 
+            this.asmLabelColWidthTextBox.Location = new System.Drawing.Point(91, 85);
+            this.asmLabelColWidthTextBox.Name = "asmLabelColWidthTextBox";
+            this.asmLabelColWidthTextBox.Size = new System.Drawing.Size(64, 20);
+            this.asmLabelColWidthTextBox.TabIndex = 6;
+            this.asmLabelColWidthTextBox.TextChanged += new System.EventHandler(this.AsmConfig_TextChanged);
+            // 
+            // asmColWidthLabel
+            // 
+            this.asmColWidthLabel.AutoSize = true;
+            this.asmColWidthLabel.Location = new System.Drawing.Point(7, 88);
+            this.asmColWidthLabel.Name = "asmColWidthLabel";
+            this.asmColWidthLabel.Size = new System.Drawing.Size(78, 13);
+            this.asmColWidthLabel.TabIndex = 5;
+            this.asmColWidthLabel.Text = "Column widths:";
+            // 
+            // asmExeLabel
+            // 
+            this.asmExeLabel.AutoSize = true;
+            this.asmExeLabel.Location = new System.Drawing.Point(22, 61);
+            this.asmExeLabel.Name = "asmExeLabel";
+            this.asmExeLabel.Size = new System.Drawing.Size(63, 13);
+            this.asmExeLabel.TabIndex = 2;
+            this.asmExeLabel.Text = "Executable:";
+            // 
+            // asmConfigComboBox
+            // 
+            this.asmConfigComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.asmConfigComboBox.FormattingEnabled = true;
+            this.asmConfigComboBox.Location = new System.Drawing.Point(91, 19);
+            this.asmConfigComboBox.Name = "asmConfigComboBox";
+            this.asmConfigComboBox.Size = new System.Drawing.Size(154, 21);
+            this.asmConfigComboBox.TabIndex = 1;
+            this.asmConfigComboBox.SelectedIndexChanged += new System.EventHandler(this.asmConfigComboBox_SelectedIndexChanged);
+            // 
+            // asmExePathTextBox
+            // 
+            this.asmExePathTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.asmExePathTextBox.Location = new System.Drawing.Point(91, 58);
+            this.asmExePathTextBox.Name = "asmExePathTextBox";
+            this.asmExePathTextBox.Size = new System.Drawing.Size(424, 20);
+            this.asmExePathTextBox.TabIndex = 3;
+            this.asmExePathTextBox.Text = "C:\\something";
+            this.asmExePathTextBox.TextChanged += new System.EventHandler(this.AsmConfig_TextChanged);
+            // 
+            // asmExeBrowseButton
+            // 
+            this.asmExeBrowseButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.asmExeBrowseButton.Location = new System.Drawing.Point(521, 56);
+            this.asmExeBrowseButton.Name = "asmExeBrowseButton";
+            this.asmExeBrowseButton.Size = new System.Drawing.Size(75, 23);
+            this.asmExeBrowseButton.TabIndex = 4;
+            this.asmExeBrowseButton.Text = "Browse...";
+            this.asmExeBrowseButton.UseVisualStyleBackColor = true;
+            this.asmExeBrowseButton.Click += new System.EventHandler(this.asmExeBrowseButton_Click);
+            // 
             // showCycleCountsCheckBox
             // 
             this.showCycleCountsCheckBox.AutoSize = true;
-            this.showCycleCountsCheckBox.Location = new System.Drawing.Point(10, 217);
+            this.showCycleCountsCheckBox.Location = new System.Drawing.Point(6, 162);
             this.showCycleCountsCheckBox.Name = "showCycleCountsCheckBox";
             this.showCycleCountsCheckBox.Size = new System.Drawing.Size(116, 17);
-            this.showCycleCountsCheckBox.TabIndex = 53;
+            this.showCycleCountsCheckBox.TabIndex = 2;
             this.showCycleCountsCheckBox.Text = "Show cycle counts";
             this.showCycleCountsCheckBox.UseVisualStyleBackColor = true;
             this.showCycleCountsCheckBox.CheckedChanged += new System.EventHandler(this.showCycleCountsCheckBox_CheckedChanged);
@@ -555,29 +699,29 @@ namespace SourceGen.AppForms {
             // configAsmGenLabel
             // 
             this.configAsmGenLabel.AutoSize = true;
-            this.configAsmGenLabel.Location = new System.Drawing.Point(7, 128);
+            this.configAsmGenLabel.Location = new System.Drawing.Point(3, 143);
             this.configAsmGenLabel.Name = "configAsmGenLabel";
-            this.configAsmGenLabel.Size = new System.Drawing.Size(154, 13);
-            this.configAsmGenLabel.TabIndex = 52;
-            this.configAsmGenLabel.Text = "Configure assembly generation:";
+            this.configAsmGenLabel.Size = new System.Drawing.Size(127, 13);
+            this.configAsmGenLabel.TabIndex = 1;
+            this.configAsmGenLabel.Text = "General code generation:";
             // 
             // longLabelNewLineCheckBox
             // 
             this.longLabelNewLineCheckBox.AutoSize = true;
-            this.longLabelNewLineCheckBox.Location = new System.Drawing.Point(10, 193);
+            this.longLabelNewLineCheckBox.Location = new System.Drawing.Point(6, 185);
             this.longLabelNewLineCheckBox.Name = "longLabelNewLineCheckBox";
             this.longLabelNewLineCheckBox.Size = new System.Drawing.Size(173, 17);
-            this.longLabelNewLineCheckBox.TabIndex = 51;
+            this.longLabelNewLineCheckBox.TabIndex = 3;
             this.longLabelNewLineCheckBox.Text = "Put long labels on separate line";
             this.longLabelNewLineCheckBox.UseVisualStyleBackColor = true;
             // 
             // showAsmIdentCheckBox
             // 
             this.showAsmIdentCheckBox.AutoSize = true;
-            this.showAsmIdentCheckBox.Location = new System.Drawing.Point(10, 147);
+            this.showAsmIdentCheckBox.Location = new System.Drawing.Point(6, 208);
             this.showAsmIdentCheckBox.Name = "showAsmIdentCheckBox";
             this.showAsmIdentCheckBox.Size = new System.Drawing.Size(154, 17);
-            this.showAsmIdentCheckBox.TabIndex = 10;
+            this.showAsmIdentCheckBox.TabIndex = 4;
             this.showAsmIdentCheckBox.Text = "Identify assembler in output";
             this.showAsmIdentCheckBox.UseVisualStyleBackColor = true;
             this.showAsmIdentCheckBox.CheckedChanged += new System.EventHandler(this.showAsmIdentCheckBox_CheckedChanged);
@@ -585,104 +729,20 @@ namespace SourceGen.AppForms {
             // disableLabelLocalizationCheckBox
             // 
             this.disableLabelLocalizationCheckBox.AutoSize = true;
-            this.disableLabelLocalizationCheckBox.Location = new System.Drawing.Point(10, 170);
+            this.disableLabelLocalizationCheckBox.Location = new System.Drawing.Point(6, 231);
             this.disableLabelLocalizationCheckBox.Name = "disableLabelLocalizationCheckBox";
             this.disableLabelLocalizationCheckBox.Size = new System.Drawing.Size(141, 17);
-            this.disableLabelLocalizationCheckBox.TabIndex = 9;
+            this.disableLabelLocalizationCheckBox.TabIndex = 5;
             this.disableLabelLocalizationCheckBox.Text = "Disable label localization";
             this.disableLabelLocalizationCheckBox.UseVisualStyleBackColor = true;
             this.disableLabelLocalizationCheckBox.CheckedChanged += new System.EventHandler(this.disableLabelLocalizationCheckBox_CheckedChanged);
             // 
-            // clearMerlin32Button
-            // 
-            this.clearMerlin32Button.Location = new System.Drawing.Point(531, 76);
-            this.clearMerlin32Button.Name = "clearMerlin32Button";
-            this.clearMerlin32Button.Size = new System.Drawing.Size(75, 23);
-            this.clearMerlin32Button.TabIndex = 8;
-            this.clearMerlin32Button.Text = "Clear";
-            this.clearMerlin32Button.UseVisualStyleBackColor = true;
-            this.clearMerlin32Button.Click += new System.EventHandler(this.clearMerlin32Button_Click);
-            // 
-            // clearCc65Button
-            // 
-            this.clearCc65Button.Location = new System.Drawing.Point(531, 35);
-            this.clearCc65Button.Name = "clearCc65Button";
-            this.clearCc65Button.Size = new System.Drawing.Size(75, 23);
-            this.clearCc65Button.TabIndex = 4;
-            this.clearCc65Button.Text = "Clear";
-            this.clearCc65Button.UseVisualStyleBackColor = true;
-            this.clearCc65Button.Click += new System.EventHandler(this.clearCc65Button_Click);
-            // 
-            // browseMerlin32Button
-            // 
-            this.browseMerlin32Button.Location = new System.Drawing.Point(450, 76);
-            this.browseMerlin32Button.Name = "browseMerlin32Button";
-            this.browseMerlin32Button.Size = new System.Drawing.Size(75, 23);
-            this.browseMerlin32Button.TabIndex = 7;
-            this.browseMerlin32Button.Text = "Browse...";
-            this.browseMerlin32Button.UseVisualStyleBackColor = true;
-            this.browseMerlin32Button.Click += new System.EventHandler(this.browseMerlin32Button_Click);
-            // 
-            // browseCc65Button
-            // 
-            this.browseCc65Button.Location = new System.Drawing.Point(450, 35);
-            this.browseCc65Button.Name = "browseCc65Button";
-            this.browseCc65Button.Size = new System.Drawing.Size(75, 23);
-            this.browseCc65Button.TabIndex = 3;
-            this.browseCc65Button.Text = "Browse...";
-            this.browseCc65Button.UseVisualStyleBackColor = true;
-            this.browseCc65Button.Click += new System.EventHandler(this.browseCc65Button_Click);
-            // 
-            // cc65PathTextBox
-            // 
-            this.cc65PathTextBox.Location = new System.Drawing.Point(65, 37);
-            this.cc65PathTextBox.Name = "cc65PathTextBox";
-            this.cc65PathTextBox.Size = new System.Drawing.Size(379, 20);
-            this.cc65PathTextBox.TabIndex = 2;
-            this.cc65PathTextBox.Text = "C:\\something";
-            this.cc65PathTextBox.TextChanged += new System.EventHandler(this.cc65PathTextBox_TextChanged);
-            // 
-            // merlin32PathTextBox
-            // 
-            this.merlin32PathTextBox.Location = new System.Drawing.Point(65, 78);
-            this.merlin32PathTextBox.Name = "merlin32PathTextBox";
-            this.merlin32PathTextBox.Size = new System.Drawing.Size(379, 20);
-            this.merlin32PathTextBox.TabIndex = 6;
-            this.merlin32PathTextBox.Text = "C:\\something";
-            this.merlin32PathTextBox.TextChanged += new System.EventHandler(this.merlin32PathTextBox_TextChanged);
-            // 
-            // asmMerln32Label
-            // 
-            this.asmMerln32Label.AutoSize = true;
-            this.asmMerln32Label.Location = new System.Drawing.Point(6, 81);
-            this.asmMerln32Label.Name = "asmMerln32Label";
-            this.asmMerln32Label.Size = new System.Drawing.Size(53, 13);
-            this.asmMerln32Label.TabIndex = 5;
-            this.asmMerln32Label.Text = "Merlin 32:";
-            // 
-            // asmCc65Label
-            // 
-            this.asmCc65Label.AutoSize = true;
-            this.asmCc65Label.Location = new System.Drawing.Point(25, 40);
-            this.asmCc65Label.Name = "asmCc65Label";
-            this.asmCc65Label.Size = new System.Drawing.Size(34, 13);
-            this.asmCc65Label.TabIndex = 1;
-            this.asmCc65Label.Text = "cc65:";
-            // 
-            // asmExplanationLabel
-            // 
-            this.asmExplanationLabel.AutoSize = true;
-            this.asmExplanationLabel.Location = new System.Drawing.Point(7, 7);
-            this.asmExplanationLabel.Name = "asmExplanationLabel";
-            this.asmExplanationLabel.Size = new System.Drawing.Size(179, 13);
-            this.asmExplanationLabel.TabIndex = 0;
-            this.asmExplanationLabel.Text = "Configure installed cross-assemblers:";
-            // 
             // displayFormatTabPage
             // 
+            this.displayFormatTabPage.Controls.Add(this.expressionStyleComboBox);
+            this.displayFormatTabPage.Controls.Add(this.expressionStyleLabel);
             this.displayFormatTabPage.Controls.Add(this.fmtExplanationLabel);
             this.displayFormatTabPage.Controls.Add(this.quickDisplayFormatGroup);
-            this.displayFormatTabPage.Controls.Add(this.useMerlinExpressions);
             this.displayFormatTabPage.Controls.Add(this.operandWidthGroupBox);
             this.displayFormatTabPage.Location = new System.Drawing.Point(4, 22);
             this.displayFormatTabPage.Name = "displayFormatTabPage";
@@ -698,40 +758,41 @@ namespace SourceGen.AppForms {
             this.fmtExplanationLabel.Location = new System.Drawing.Point(7, 7);
             this.fmtExplanationLabel.Name = "fmtExplanationLabel";
             this.fmtExplanationLabel.Size = new System.Drawing.Size(374, 13);
-            this.fmtExplanationLabel.TabIndex = 52;
+            this.fmtExplanationLabel.TabIndex = 0;
             this.fmtExplanationLabel.Text = "Configure display format options. This does not affect source code generation.";
             // 
             // quickDisplayFormatGroup
             // 
-            this.quickDisplayFormatGroup.Controls.Add(this.quickFmtMerlin32Button);
-            this.quickDisplayFormatGroup.Controls.Add(this.quickFmtCc65Button);
+            this.quickDisplayFormatGroup.Controls.Add(this.displayFmtQuickComboBox);
+            this.quickDisplayFormatGroup.Controls.Add(this.displayFmtSetButton);
             this.quickDisplayFormatGroup.Controls.Add(this.quickFmtDefaultButton);
-            this.quickDisplayFormatGroup.Location = new System.Drawing.Point(348, 291);
+            this.quickDisplayFormatGroup.Location = new System.Drawing.Point(215, 291);
             this.quickDisplayFormatGroup.Name = "quickDisplayFormatGroup";
-            this.quickDisplayFormatGroup.Size = new System.Drawing.Size(258, 75);
-            this.quickDisplayFormatGroup.TabIndex = 51;
+            this.quickDisplayFormatGroup.Size = new System.Drawing.Size(391, 75);
+            this.quickDisplayFormatGroup.TabIndex = 3;
             this.quickDisplayFormatGroup.TabStop = false;
             this.quickDisplayFormatGroup.Text = "Quick Set";
             // 
-            // quickFmtMerlin32Button
+            // displayFmtQuickComboBox
             // 
-            this.quickFmtMerlin32Button.Location = new System.Drawing.Point(173, 30);
-            this.quickFmtMerlin32Button.Name = "quickFmtMerlin32Button";
-            this.quickFmtMerlin32Button.Size = new System.Drawing.Size(75, 23);
-            this.quickFmtMerlin32Button.TabIndex = 2;
-            this.quickFmtMerlin32Button.Text = "Merlin 32";
-            this.quickFmtMerlin32Button.UseVisualStyleBackColor = true;
-            this.quickFmtMerlin32Button.Click += new System.EventHandler(this.quickFmtMerlin32Button_Click);
+            this.displayFmtQuickComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.displayFmtQuickComboBox.FormattingEnabled = true;
+            this.displayFmtQuickComboBox.Items.AddRange(new object[] {
+            "MegaAsm"});
+            this.displayFmtQuickComboBox.Location = new System.Drawing.Point(136, 32);
+            this.displayFmtQuickComboBox.Name = "displayFmtQuickComboBox";
+            this.displayFmtQuickComboBox.Size = new System.Drawing.Size(168, 21);
+            this.displayFmtQuickComboBox.TabIndex = 1;
             // 
-            // quickFmtCc65Button
+            // displayFmtSetButton
             // 
-            this.quickFmtCc65Button.Location = new System.Drawing.Point(92, 30);
-            this.quickFmtCc65Button.Name = "quickFmtCc65Button";
-            this.quickFmtCc65Button.Size = new System.Drawing.Size(75, 23);
-            this.quickFmtCc65Button.TabIndex = 1;
-            this.quickFmtCc65Button.Text = "cc65";
-            this.quickFmtCc65Button.UseVisualStyleBackColor = true;
-            this.quickFmtCc65Button.Click += new System.EventHandler(this.quickFmtCc65Button_Click);
+            this.displayFmtSetButton.Location = new System.Drawing.Point(310, 30);
+            this.displayFmtSetButton.Name = "displayFmtSetButton";
+            this.displayFmtSetButton.Size = new System.Drawing.Size(75, 23);
+            this.displayFmtSetButton.TabIndex = 2;
+            this.displayFmtSetButton.Text = "Set";
+            this.displayFmtSetButton.UseVisualStyleBackColor = true;
+            this.displayFmtSetButton.Click += new System.EventHandler(this.displayFmtSetButton_Click);
             // 
             // quickFmtDefaultButton
             // 
@@ -742,17 +803,6 @@ namespace SourceGen.AppForms {
             this.quickFmtDefaultButton.Text = "Default";
             this.quickFmtDefaultButton.UseVisualStyleBackColor = true;
             this.quickFmtDefaultButton.Click += new System.EventHandler(this.quickFmtDefaultButton_Click);
-            // 
-            // useMerlinExpressions
-            // 
-            this.useMerlinExpressions.AutoSize = true;
-            this.useMerlinExpressions.Location = new System.Drawing.Point(6, 153);
-            this.useMerlinExpressions.Name = "useMerlinExpressions";
-            this.useMerlinExpressions.Size = new System.Drawing.Size(158, 17);
-            this.useMerlinExpressions.TabIndex = 49;
-            this.useMerlinExpressions.Text = "Use Merlin-style expressions";
-            this.useMerlinExpressions.UseVisualStyleBackColor = true;
-            this.useMerlinExpressions.CheckedChanged += new System.EventHandler(this.shiftAfterAdjustCheckBox_CheckedChanged);
             // 
             // operandWidthGroupBox
             // 
@@ -766,51 +816,51 @@ namespace SourceGen.AppForms {
             this.operandWidthGroupBox.Controls.Add(this.disambOpcodeSuffixLabel);
             this.operandWidthGroupBox.Controls.Add(this.disambSuffix24TextBox);
             this.operandWidthGroupBox.Controls.Add(this.disambSuffix16TextBox);
-            this.operandWidthGroupBox.Location = new System.Drawing.Point(6, 38);
+            this.operandWidthGroupBox.Location = new System.Drawing.Point(6, 40);
             this.operandWidthGroupBox.Name = "operandWidthGroupBox";
             this.operandWidthGroupBox.Size = new System.Drawing.Size(295, 98);
-            this.operandWidthGroupBox.TabIndex = 48;
+            this.operandWidthGroupBox.TabIndex = 1;
             this.operandWidthGroupBox.TabStop = false;
             this.operandWidthGroupBox.Text = "Operand Width Disambiguator";
             // 
             // disambPrefix24TextBox
             // 
             this.disambPrefix24TextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.disambPrefix24TextBox.Location = new System.Drawing.Point(220, 64);
+            this.disambPrefix24TextBox.Location = new System.Drawing.Point(220, 66);
             this.disambPrefix24TextBox.MaxLength = 8;
             this.disambPrefix24TextBox.Name = "disambPrefix24TextBox";
             this.disambPrefix24TextBox.Size = new System.Drawing.Size(62, 20);
-            this.disambPrefix24TextBox.TabIndex = 13;
+            this.disambPrefix24TextBox.TabIndex = 9;
             this.disambPrefix24TextBox.Text = ".placeho";
             this.disambPrefix24TextBox.TextChanged += new System.EventHandler(this.WidthDisamControlChanged);
             // 
             // disambPrefix16TextBox
             // 
             this.disambPrefix16TextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.disambPrefix16TextBox.Location = new System.Drawing.Point(220, 38);
+            this.disambPrefix16TextBox.Location = new System.Drawing.Point(220, 40);
             this.disambPrefix16TextBox.MaxLength = 8;
             this.disambPrefix16TextBox.Name = "disambPrefix16TextBox";
             this.disambPrefix16TextBox.Size = new System.Drawing.Size(62, 20);
-            this.disambPrefix16TextBox.TabIndex = 12;
+            this.disambPrefix16TextBox.TabIndex = 7;
             this.disambPrefix16TextBox.Text = ".placeho";
             this.disambPrefix16TextBox.TextChanged += new System.EventHandler(this.WidthDisamControlChanged);
             // 
             // disambPrefix24Label
             // 
             this.disambPrefix24Label.AutoSize = true;
-            this.disambPrefix24Label.Location = new System.Drawing.Point(171, 66);
+            this.disambPrefix24Label.Location = new System.Drawing.Point(171, 68);
             this.disambPrefix24Label.Name = "disambPrefix24Label";
             this.disambPrefix24Label.Size = new System.Drawing.Size(36, 13);
-            this.disambPrefix24Label.TabIndex = 11;
+            this.disambPrefix24Label.TabIndex = 8;
             this.disambPrefix24Label.Text = "24 bit:";
             // 
             // disambPrefix16Label
             // 
             this.disambPrefix16Label.AutoSize = true;
-            this.disambPrefix16Label.Location = new System.Drawing.Point(171, 40);
+            this.disambPrefix16Label.Location = new System.Drawing.Point(171, 42);
             this.disambPrefix16Label.Name = "disambPrefix16Label";
             this.disambPrefix16Label.Size = new System.Drawing.Size(36, 13);
-            this.disambPrefix16Label.TabIndex = 10;
+            this.disambPrefix16Label.TabIndex = 6;
             this.disambPrefix16Label.Text = "16 bit:";
             // 
             // disambOperandPrefixLabel
@@ -819,25 +869,25 @@ namespace SourceGen.AppForms {
             this.disambOperandPrefixLabel.Location = new System.Drawing.Point(171, 20);
             this.disambOperandPrefixLabel.Name = "disambOperandPrefixLabel";
             this.disambOperandPrefixLabel.Size = new System.Drawing.Size(79, 13);
-            this.disambOperandPrefixLabel.TabIndex = 9;
+            this.disambOperandPrefixLabel.TabIndex = 5;
             this.disambOperandPrefixLabel.Text = "Operand prefix:";
             // 
             // disambSuffix24Label
             // 
             this.disambSuffix24Label.AutoSize = true;
-            this.disambSuffix24Label.Location = new System.Drawing.Point(10, 66);
+            this.disambSuffix24Label.Location = new System.Drawing.Point(10, 68);
             this.disambSuffix24Label.Name = "disambSuffix24Label";
             this.disambSuffix24Label.Size = new System.Drawing.Size(36, 13);
-            this.disambSuffix24Label.TabIndex = 8;
+            this.disambSuffix24Label.TabIndex = 3;
             this.disambSuffix24Label.Text = "24 bit:";
             // 
             // disambSuffix16Label
             // 
             this.disambSuffix16Label.AutoSize = true;
-            this.disambSuffix16Label.Location = new System.Drawing.Point(10, 40);
+            this.disambSuffix16Label.Location = new System.Drawing.Point(10, 42);
             this.disambSuffix16Label.Name = "disambSuffix16Label";
             this.disambSuffix16Label.Size = new System.Drawing.Size(36, 13);
-            this.disambSuffix16Label.TabIndex = 7;
+            this.disambSuffix16Label.TabIndex = 1;
             this.disambSuffix16Label.Text = "16 bit:";
             // 
             // disambOpcodeSuffixLabel
@@ -846,28 +896,28 @@ namespace SourceGen.AppForms {
             this.disambOpcodeSuffixLabel.Location = new System.Drawing.Point(7, 20);
             this.disambOpcodeSuffixLabel.Name = "disambOpcodeSuffixLabel";
             this.disambOpcodeSuffixLabel.Size = new System.Drawing.Size(75, 13);
-            this.disambOpcodeSuffixLabel.TabIndex = 6;
+            this.disambOpcodeSuffixLabel.TabIndex = 0;
             this.disambOpcodeSuffixLabel.Text = "Opcode suffix:";
             // 
             // disambSuffix24TextBox
             // 
             this.disambSuffix24TextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.disambSuffix24TextBox.Location = new System.Drawing.Point(62, 64);
+            this.disambSuffix24TextBox.Location = new System.Drawing.Point(62, 66);
             this.disambSuffix24TextBox.MaxLength = 8;
             this.disambSuffix24TextBox.Name = "disambSuffix24TextBox";
             this.disambSuffix24TextBox.Size = new System.Drawing.Size(62, 20);
-            this.disambSuffix24TextBox.TabIndex = 5;
+            this.disambSuffix24TextBox.TabIndex = 4;
             this.disambSuffix24TextBox.Text = ".placeho";
             this.disambSuffix24TextBox.TextChanged += new System.EventHandler(this.WidthDisamControlChanged);
             // 
             // disambSuffix16TextBox
             // 
             this.disambSuffix16TextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.disambSuffix16TextBox.Location = new System.Drawing.Point(62, 38);
+            this.disambSuffix16TextBox.Location = new System.Drawing.Point(62, 40);
             this.disambSuffix16TextBox.MaxLength = 8;
             this.disambSuffix16TextBox.Name = "disambSuffix16TextBox";
             this.disambSuffix16TextBox.Size = new System.Drawing.Size(62, 20);
-            this.disambSuffix16TextBox.TabIndex = 3;
+            this.disambSuffix16TextBox.TabIndex = 2;
             this.disambSuffix16TextBox.Text = ".placeho";
             this.disambSuffix16TextBox.TextChanged += new System.EventHandler(this.WidthDisamControlChanged);
             // 
@@ -929,35 +979,34 @@ namespace SourceGen.AppForms {
             // 
             // quickPseudoSetGroup
             // 
-            this.quickPseudoSetGroup.Controls.Add(this.quickPseudoMerlin32);
-            this.quickPseudoSetGroup.Controls.Add(this.quickPseudoCc65Button);
+            this.quickPseudoSetGroup.Controls.Add(this.pseudoOpSetButton);
+            this.quickPseudoSetGroup.Controls.Add(this.pseudoOpQuickComboBox);
             this.quickPseudoSetGroup.Controls.Add(this.quickPseudoDefaultButton);
-            this.quickPseudoSetGroup.Location = new System.Drawing.Point(348, 291);
+            this.quickPseudoSetGroup.Location = new System.Drawing.Point(215, 291);
             this.quickPseudoSetGroup.Name = "quickPseudoSetGroup";
-            this.quickPseudoSetGroup.Size = new System.Drawing.Size(258, 75);
-            this.quickPseudoSetGroup.TabIndex = 46;
+            this.quickPseudoSetGroup.Size = new System.Drawing.Size(391, 75);
+            this.quickPseudoSetGroup.TabIndex = 45;
             this.quickPseudoSetGroup.TabStop = false;
             this.quickPseudoSetGroup.Text = "Quick Set";
             // 
-            // quickPseudoMerlin32
+            // pseudoOpSetButton
             // 
-            this.quickPseudoMerlin32.Location = new System.Drawing.Point(173, 30);
-            this.quickPseudoMerlin32.Name = "quickPseudoMerlin32";
-            this.quickPseudoMerlin32.Size = new System.Drawing.Size(75, 23);
-            this.quickPseudoMerlin32.TabIndex = 2;
-            this.quickPseudoMerlin32.Text = "Merlin 32";
-            this.quickPseudoMerlin32.UseVisualStyleBackColor = true;
-            this.quickPseudoMerlin32.Click += new System.EventHandler(this.quickPseudoMerlin32_Click);
+            this.pseudoOpSetButton.Location = new System.Drawing.Point(310, 30);
+            this.pseudoOpSetButton.Name = "pseudoOpSetButton";
+            this.pseudoOpSetButton.Size = new System.Drawing.Size(75, 23);
+            this.pseudoOpSetButton.TabIndex = 2;
+            this.pseudoOpSetButton.Text = "Set";
+            this.pseudoOpSetButton.UseVisualStyleBackColor = true;
+            this.pseudoOpSetButton.Click += new System.EventHandler(this.pseudoOpSetButton_Click);
             // 
-            // quickPseudoCc65Button
+            // pseudoOpQuickComboBox
             // 
-            this.quickPseudoCc65Button.Location = new System.Drawing.Point(92, 30);
-            this.quickPseudoCc65Button.Name = "quickPseudoCc65Button";
-            this.quickPseudoCc65Button.Size = new System.Drawing.Size(75, 23);
-            this.quickPseudoCc65Button.TabIndex = 1;
-            this.quickPseudoCc65Button.Text = "cc65";
-            this.quickPseudoCc65Button.UseVisualStyleBackColor = true;
-            this.quickPseudoCc65Button.Click += new System.EventHandler(this.quickPseudoCc65Button_Click);
+            this.pseudoOpQuickComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.pseudoOpQuickComboBox.FormattingEnabled = true;
+            this.pseudoOpQuickComboBox.Location = new System.Drawing.Point(136, 32);
+            this.pseudoOpQuickComboBox.Name = "pseudoOpQuickComboBox";
+            this.pseudoOpQuickComboBox.Size = new System.Drawing.Size(168, 21);
+            this.pseudoOpQuickComboBox.TabIndex = 1;
             // 
             // quickPseudoDefaultButton
             // 
@@ -1214,10 +1263,10 @@ namespace SourceGen.AppForms {
             this.popExplanationLabel.AutoSize = true;
             this.popExplanationLabel.Location = new System.Drawing.Point(7, 7);
             this.popExplanationLabel.Name = "popExplanationLabel";
-            this.popExplanationLabel.Size = new System.Drawing.Size(541, 13);
+            this.popExplanationLabel.Size = new System.Drawing.Size(550, 13);
             this.popExplanationLabel.TabIndex = 0;
             this.popExplanationLabel.Text = "Select pseudo-op names for display. This does not affect source code generation. " +
-    "Blank entries get default value.";
+    "Blank entries get a default value.";
             // 
             // denseTextBox
             // 
@@ -1419,6 +1468,24 @@ namespace SourceGen.AppForms {
             this.equDirectiveLabel.Text = "Equate:";
             this.equDirectiveLabel.TextAlign = System.Drawing.ContentAlignment.TopRight;
             // 
+            // expressionStyleLabel
+            // 
+            this.expressionStyleLabel.AutoSize = true;
+            this.expressionStyleLabel.Location = new System.Drawing.Point(7, 156);
+            this.expressionStyleLabel.Name = "expressionStyleLabel";
+            this.expressionStyleLabel.Size = new System.Drawing.Size(85, 13);
+            this.expressionStyleLabel.TabIndex = 4;
+            this.expressionStyleLabel.Text = "Expression style:";
+            // 
+            // expressionStyleComboBox
+            // 
+            this.expressionStyleComboBox.FormattingEnabled = true;
+            this.expressionStyleComboBox.Location = new System.Drawing.Point(98, 153);
+            this.expressionStyleComboBox.Name = "expressionStyleComboBox";
+            this.expressionStyleComboBox.Size = new System.Drawing.Size(121, 21);
+            this.expressionStyleComboBox.TabIndex = 5;
+            this.expressionStyleComboBox.SelectedIndexChanged += new System.EventHandler(this.expressionStyleComboBox_SelectedIndexChanged);
+            // 
             // EditAppSettings
             // 
             this.AcceptButton = this.okButton;
@@ -1441,6 +1508,8 @@ namespace SourceGen.AppForms {
             this.settingsTabControl.ResumeLayout(false);
             this.codeViewTabPage.ResumeLayout(false);
             this.codeViewTabPage.PerformLayout();
+            this.codeViewMiscGroupBox.ResumeLayout(false);
+            this.codeViewMiscGroupBox.PerformLayout();
             this.clipboardGroupBox.ResumeLayout(false);
             this.clipboardGroupBox.PerformLayout();
             this.upperCaseGroupBox.ResumeLayout(false);
@@ -1450,6 +1519,8 @@ namespace SourceGen.AppForms {
             this.columnVisGroup.ResumeLayout(false);
             this.asmConfigTabPage.ResumeLayout(false);
             this.asmConfigTabPage.PerformLayout();
+            this.configureAsmGroupBox.ResumeLayout(false);
+            this.configureAsmGroupBox.PerformLayout();
             this.displayFormatTabPage.ResumeLayout(false);
             this.displayFormatTabPage.PerformLayout();
             this.quickDisplayFormatGroup.ResumeLayout(false);
@@ -1526,20 +1597,13 @@ namespace SourceGen.AppForms {
         private System.Windows.Forms.Label strReverseHiLabel;
         private System.Windows.Forms.TextBox strReverseTextBox;
         private System.Windows.Forms.Label strReverseLabel;
-        private System.Windows.Forms.Label asmExplanationLabel;
-        private System.Windows.Forms.TextBox cc65PathTextBox;
-        private System.Windows.Forms.TextBox merlin32PathTextBox;
-        private System.Windows.Forms.Label asmMerln32Label;
-        private System.Windows.Forms.Label asmCc65Label;
-        private System.Windows.Forms.Button browseMerlin32Button;
-        private System.Windows.Forms.Button browseCc65Button;
+        private System.Windows.Forms.TextBox asmExePathTextBox;
+        private System.Windows.Forms.Button asmExeBrowseButton;
         private System.Windows.Forms.GroupBox codeViewFontGroupBox;
         private System.Windows.Forms.Label currentFontLabel;
         private System.Windows.Forms.Button selectFontButton;
         private System.Windows.Forms.Label currentFontDisplayLabel;
         private System.Windows.Forms.GroupBox quickPseudoSetGroup;
-        private System.Windows.Forms.Button quickPseudoMerlin32;
-        private System.Windows.Forms.Button quickPseudoCc65Button;
         private System.Windows.Forms.Button quickPseudoDefaultButton;
         private System.Windows.Forms.GroupBox upperCaseGroupBox;
         private System.Windows.Forms.CheckBox upperOpcodeCheckBox;
@@ -1550,13 +1614,10 @@ namespace SourceGen.AppForms {
         private System.Windows.Forms.CheckBox upperSCheckBox;
         private System.Windows.Forms.CheckBox upperACheckBox;
         private System.Windows.Forms.CheckBox upperPseudoOpCheckBox;
-        private System.Windows.Forms.Button clearMerlin32Button;
-        private System.Windows.Forms.Button clearCc65Button;
         private System.Windows.Forms.CheckBox disableLabelLocalizationCheckBox;
         private System.Windows.Forms.CheckBox enableDebugCheckBox;
         private System.Windows.Forms.CheckBox showAsmIdentCheckBox;
         private System.Windows.Forms.TabPage displayFormatTabPage;
-        private System.Windows.Forms.CheckBox useMerlinExpressions;
         private System.Windows.Forms.GroupBox operandWidthGroupBox;
         private System.Windows.Forms.TextBox disambPrefix24TextBox;
         private System.Windows.Forms.TextBox disambPrefix16TextBox;
@@ -1569,8 +1630,6 @@ namespace SourceGen.AppForms {
         private System.Windows.Forms.TextBox disambSuffix24TextBox;
         private System.Windows.Forms.TextBox disambSuffix16TextBox;
         private System.Windows.Forms.GroupBox quickDisplayFormatGroup;
-        private System.Windows.Forms.Button quickFmtMerlin32Button;
-        private System.Windows.Forms.Button quickFmtCc65Button;
         private System.Windows.Forms.Button quickFmtDefaultButton;
         private System.Windows.Forms.Label configAsmGenLabel;
         private System.Windows.Forms.CheckBox longLabelNewLineCheckBox;
@@ -1579,5 +1638,23 @@ namespace SourceGen.AppForms {
         private System.Windows.Forms.GroupBox clipboardGroupBox;
         private System.Windows.Forms.ComboBox clipboardFormatComboBox;
         private System.Windows.Forms.Label clipboardFormatLabel;
+        private System.Windows.Forms.ComboBox asmConfigComboBox;
+        private System.Windows.Forms.GroupBox configureAsmGroupBox;
+        private System.Windows.Forms.Label asmExeLabel;
+        private System.Windows.Forms.Label asmColWidthLabel;
+        private System.Windows.Forms.TextBox asmCommentColWidthTextBox;
+        private System.Windows.Forms.TextBox asmOperandColWidthTextBox;
+        private System.Windows.Forms.TextBox asmOpcodeColWidthTextBox;
+        private System.Windows.Forms.TextBox asmLabelColWidthTextBox;
+        private System.Windows.Forms.Label asmConfigAssemblerLabel;
+        private System.Windows.Forms.Label asmColWidthIdLabel;
+        private System.Windows.Forms.Button pseudoOpSetButton;
+        private System.Windows.Forms.ComboBox pseudoOpQuickComboBox;
+        private System.Windows.Forms.Button displayFmtSetButton;
+        private System.Windows.Forms.ComboBox displayFmtQuickComboBox;
+        private System.Windows.Forms.GroupBox codeViewMiscGroupBox;
+        private System.Windows.Forms.CheckBox spacesBetweenBytesCheckBox;
+        private System.Windows.Forms.ComboBox expressionStyleComboBox;
+        private System.Windows.Forms.Label expressionStyleLabel;
     }
 }

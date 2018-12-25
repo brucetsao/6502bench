@@ -211,7 +211,7 @@ namespace SourceGen.AsmGen {
         /// </summary>
         private void UpdateAssemblerControls() {
             bool asmConf = IsAssemblerConfigured();
-            Debug.WriteLine("ID=" + mSelectedAssemblerId + " asmConf=" + asmConf);
+            //Debug.WriteLine("ID=" + mSelectedAssemblerId + " asmConf=" + asmConf);
             configureAsmLinkLabel.Visible = !asmConf;
             if (mGenerationResults == null || !asmConf) {
                 runAssemblerButton.Enabled = false;
@@ -221,22 +221,12 @@ namespace SourceGen.AsmGen {
         }
 
         /// <summary>
-        /// Returns true if the selected assembler has been configured.
+        /// Returns true if the selected cross-assembler executable has been configured.
         /// </summary>
         private bool IsAssemblerConfigured() {
-            string settingStr;
-            switch (mSelectedAssemblerId) {
-                case AssemblerInfo.Id.Cc65:
-                    settingStr = AppSettings.ASM_CC65_EXECUTABLE;
-                    break;
-                case AssemblerInfo.Id.Merlin32:
-                    settingStr = AppSettings.ASM_MERLIN32_EXECUTABLE;
-                    break;
-                default:
-                    Debug.Assert(false);
-                    return false;
-            }
-            return !string.IsNullOrEmpty(AppSettings.Global.GetString(settingStr, null));
+            AssemblerConfig config =
+                AssemblerConfig.GetConfig(AppSettings.Global, mSelectedAssemblerId);
+            return config != null && !string.IsNullOrEmpty(config.ExecutablePath);
         }
 
         private void assemblerSettingsButton_Click(object sender, EventArgs e) {
@@ -254,7 +244,8 @@ namespace SourceGen.AsmGen {
         /// </summary>
         private void DoSettings() {
             // Pop open the app settings dialog, with the appropriate tab selected.
-            mProjView.ShowAppSettings(AppForms.EditAppSettings.Tab.Assembler);
+            mProjView.ShowAppSettings(AppForms.EditAppSettings.Tab.AsmConfig,
+                mSelectedAssemblerId);
 
             // Update the controls based on whether or not the assembler is now available.
             UpdateAssemblerControls();
@@ -366,7 +357,7 @@ namespace SourceGen.AsmGen {
             if (results.ExitCode == 0) {
                 FileInfo fi = new FileInfo(results.OutputPathName);
                 if (!fi.Exists) {
-                    MessageBox.Show(Properties.Resources.ASM_OUTPUT_NOT_FOUND,
+                    MessageBox.Show(this, Properties.Resources.ASM_OUTPUT_NOT_FOUND,
                         Properties.Resources.ASM_MISMATCH_CAPTION,
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                     sb.Append(Properties.Resources.ASM_MATCH_FAILURE);
@@ -377,13 +368,13 @@ namespace SourceGen.AsmGen {
                         // The files matched up to the point where one ended.
                         string msg = string.Format(Properties.Resources.ASM_MISMATCH_LENGTH_FMT,
                             fi.Length, mProject.FileData.Length);
-                        MessageBox.Show(msg, Properties.Resources.ASM_MISMATCH_CAPTION,
+                        MessageBox.Show(this, msg, Properties.Resources.ASM_MISMATCH_CAPTION,
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                         sb.Append(msg);
                     } else {
                         string msg = string.Format(Properties.Resources.ASM_MISMATCH_DATA_FMT,
                             offset, fileVal, mProject.FileData[offset]);
-                        MessageBox.Show(msg, Properties.Resources.ASM_MISMATCH_CAPTION,
+                        MessageBox.Show(this, msg, Properties.Resources.ASM_MISMATCH_CAPTION,
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                         sb.Append(msg);
                     }

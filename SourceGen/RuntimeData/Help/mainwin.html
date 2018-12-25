@@ -9,7 +9,7 @@
 </head>
 
 <body>
-<div id=content>
+<div id="content">
 <h1>6502bench SourceGen: Main Window</h1>
 <p><a href="index.html">Back to index</a></p>
 
@@ -20,7 +20,9 @@ This opens the Create New Project window.</p>
 <p>Start by selecting your target system from the tree on the left.
 The panel on the right will show the CPU that will be selected, as well
 as the symbol files and extension scripts that will be loaded by default.
-All of these may be overridden later from the project properties.</p>
+All of these may be overridden later from the project properties.
+(If the description in the panel on the right says "[placeholder]", it
+means that the system doesn't yet have a set of symbols defined for it.)</p>
 
 <p>Next, click the "Select File..." button.  Pick the file you wish to
 disassemble.  The dialog will update with the pathname and some notes
@@ -31,7 +33,7 @@ incomplete.  The maximum size for a data file is currently 1 MiB.</p>
 
 <p>The first time you save the project (with File &gt; Save), you will be
 prompted for the project name.  It's best to use the data file's name
-with ".dis65" added.  This will be configured automatically.  The data
+with ".dis65" added, so this will be set as the default.  The data
 file's name is not stored in the project file, so if you pick a different
 name, or save the project in a different directory, you will have to
 select the data file manually whenever you open the project.</p>
@@ -58,7 +60,7 @@ to cancel the loading of the project.</p>
 <p>The locations of the last few projects you've worked with are saved
 in the application settings.  You can access them from
 File &gt; Recent Projects.  If no project is open, links to the two
-most-recently opened projects will be available.</p>
+most-recently-opened projects will be available.</p>
 
 
 <h2><a name="working">Working With a Project</a></h2>
@@ -66,11 +68,11 @@ most-recently opened projects will be available.</p>
 <p>The main project window is divided into five areas:</p>
 <ol>
   <li>Center: the code list.  If no project is open, this will instead
-    have clickable links to open a new or existing project.
-  <li>Top left: cross-reference list.
-  <li>Bottom left: notes list.
-  <li>Top right: symbols list.
-  <li>Bottom right: line info.
+    have clickable links to open a new or existing project.</li>
+  <li>Top left: cross-reference list.</li>
+  <li>Bottom left: notes list.</li>
+  <li>Top right: symbols list.</li>
+  <li>Bottom right: info on selected line.</li>
 </ol>
 
 <p>Most of the action takes place in the center code list.</p>
@@ -94,10 +96,12 @@ assembler directive.</p>
     correspond to the instruction or data.  To see the full dump of
     a longer item, such as an ASCII string, double-click on the field
     to open the
-    <a href="tools.html#hexdump">Hex Dump Viewer</a>.  (Note this is
-    a floating window, so you can keep it open while you work.)</li>
+    <a href="tools.html#hexdump">Hex Dump Viewer</a>.  This is
+    a floating window, so you can keep it open while you work.
+    Double-clicking in the bytes column in other rows will update
+    the window position and selection.</li>
   <li><b>Flags</b>.  This shows the state of the status flags as they
-    were before the instruction was executed.  Double-click on this
+    are before the instruction is executed.  Double-click on this
     field to open the
     <a href="editors.html#flags">Edit Status Flag Override</a> dialog.</li>
   <li><b>Attributes</b>.  Some instructions and data items have
@@ -112,11 +116,11 @@ assembler directive.</p>
     field.  Double-click on this field to open the
     <a href="editors.html#label">Edit Label</a> dialog.</li>
   <li><b>Opcode</b>.  The instruction or pseudo-opcode mnemonic.
-    If an instruction is embedded inside this one, a &#9193; symbol
+    If an instruction is embedded inside this one, a &#x25bc; symbol
     will appear.
     If you double-click this field for an instruction or data item
-    whose operand refers to an address in the file, the view will jump to
-    that location.</li>
+    whose operand refers to an address in the file, the selection will
+    jump to that location.</li>
   <li><b>Operand</b>.  The instruction or data operand.  Data operands
     may span a large number of bytes.  Double-click on this field to
     open the
@@ -157,12 +161,11 @@ enabled will depend on what you have selected in the main window.</p>
   <li><a href="editors.html#label">Edit Label</a>.  Sets the label
     at that offset.  Enabled when a single instruction or data line is
     selected.</li>
-  <li><a href="editors.html#operand">Edit Operand</a>.  Sets the
-    operand format for that instruction.  Enabled when a single instruction
-    line is selected.</li>
-  <li><a href="editors.html#data">Edit Data Format</a>.  Sets the
-    format for data operands.  Enabled when one or more data
-    lines are selected.</li>
+  <li><a href="editors.html#operand">Edit Operand</a>.  Opens the
+    Edit Instruction Operand or Edit Data Format window, depending on
+    what's selected.
+    Enabled when a single instruction line is selected, or when one
+    or more data lines are selected.</li>
   <li><a href="editors.html#comment">Edit Comment</a>.  Sets the
     comment at that offset.  Enabled when a single instruction or data
     line is selected.</li>
@@ -177,17 +180,19 @@ enabled will depend on what you have selected in the main window.</p>
     when a single equate directive, generated from a project symbol, is
     selected.</li>
 
-  <li><a href="#hinting">Hinting</a> (Hint As Code Entry Point, Hint As
+  <li><a href="#hints">Hinting</a> (Hint As Code Entry Point, Hint As
     Data Start, Hint As Inline Data, Remove Hints).  Enabled when one or more
     code and data lines are selected.  Remove Hints is only enabled when
-    at least one line has hints.</li>
+    at least one line has hints.  The keyboard shortcuts for hints are
+    two-key combinations.</li>
   <li><a href="#toggle-single">Toggle Single-Byte Format</a>.  Toggles
     a range of lines between default format and single-byte format.  Enabled
     when one or more data lines are selected.</li>
   <li>Delete Note / Long Comment.  Deletes the selected note or long
     comment.  Enabled when a single note or long comment is selected.</li>
   <li><a href="tools.html#hexdump">Show Hex Dump</a>.  Opens the hex dump
-    viewer with the current selection highlighted.  Always enabled.</li>
+    viewer, with the current selection highlighted.  Always enabled.  If
+    nothing is selected, the viewer will open at the top of the file.</li>
 </ul>
 
 
@@ -199,8 +204,8 @@ change with Edit &gt; Redo, Ctrl+Y, or Ctrl+Shift+Z.</p>
 are added to the undo/redo buffer.  This has no fixed size limit, so no
 matter how much you change, you can always undo back to the point where
 the project was opened.</p>
-<p>The undo buffer is not saved as part of the project, so closing and
-reopening the project resets the buffer.</p>
+<p>The undo history is not saved as part of the project.  Closing a project
+clears the buffer.</p>
 
 
 <h3><a name="references">References Window</a></h3>
@@ -264,7 +269,9 @@ Use Edit &gt; Find Next to find the next match.</p>
 
 <p>Use Edit &gt; Go To to jump to an offset, address, or label.  Remember
 that offsets and addresses are always hexadecimal, and offsets start
-with a '+'.</p>
+with a '+'.  If you have a label that is also a valid hexadecimal
+address, like "FEED", the label takes precedence.  To jump to the address
+write "$FEED" instead.</p>
 
 <p>When you jump around, by double-clicking on an opcode or an entry
 in one of the side windows, the currently-selected line is added to
@@ -275,20 +282,152 @@ Ctrl+- / Ctrl+Shift+-, as keyboard shortcuts.)</p>
 
 <h3><a name="hints">Adding and Removing Hints</a></h3>
 
-<p>To add code entry or data hints, select the offsets with the instruction
-opcodes, and then use the "Hint as Code Entry Point" or "Hint as Data"
-menu item.  Remember to avoid hinting additional bytes, especially with
-code entry points, as that can lead to unwanted embedded instructions.</p>
-<p>For inline data, select all of the data that the code analyzer should
-skip, and use the "Hint as Inline Data" menu item.</p>
+<p>To add code entry or data hints, select the desired offsets and
+use Actions &gt; Hint As Code Entry Point or Hint As Data.  Because code
+hints mean "the code analyzer should start here", and data hints mean
+"the code analyzer should stop here", there is rarely any reason to hint
+multiple consecutive bytes.  For this reason, only the first byte on each
+selected line will be hinted.</p>
+<p>For inline data, you need to hint every byte, so every byte in every
+selected line is hinted when you select Hint As Inline Data.  Similarly,
+the Remove Hints menu item will remove hints from every byte.</p>
 
 <p>If you're having a hard time selecting just the right bytes because
 the instructions are caught up in a multi-byte data item, such as an
-auto-detected ASCII string, you can use the "Toggle Single-Byte Format"
-menu item to "flatten" the item.  Apply the hint, then toggle the bytes
-back to default format.  You can also disable uncategorized data analysis
-entirely from the
-<a href="settings.html#project-properties">project properties</a> editor.
+auto-detected ASCII string, you can disable uncategorized data analysis
+(the thing that creates the .STR and .FILL ops for you).  You can do this
+from the
+<a href="settings.html#project-properties">project properties</a> editor,
+or simply by hitting Ctrl+D.  Hit that, apply the hint, then hit it
+again to re-enable the string &amp; fill analyzer.</p>
+<p>Another approach is to can use the "Toggle Single-Byte Format"
+menu item to "flatten" the item.</p>
+
+
+<h3><a name="split-address">Format Split-Address Table</a></h3>
+
+<p>Tables of addresses are fairly common.  Sometimes you'll find them as a
+series of 16-bit words, like this:</p>
+<pre>
+jmptab   .dd2    func1
+         .dd2    func2
+         .dd2    func3
+</pre>
+
+<p>While that's fairly common in 16-bit software, 8-bit software often splits
+the high and low bytes into separate arrays, like this:</p>
+<pre>
+jmptabl  .dd1    &lt;func1
+         .dd1    &lt;func2
+         .dd1    &lt;func3
+jmptabh  .dd1    &gt;func1
+         .dd1    &gt;func2
+         .dd1    &gt;func3
+</pre>
+
+<p>Sometimes the tables contain <code>address - 1</code>, because the
+values are to be pushed onto the stack for an RTS call.</p>
+
+<p>The split-address table formatter helps you associate symbols with the
+addresses in the table.  To use it, start by selecting the entire table.
+In the example above, you would select all 6 bytes.  The number of bytes
+in each part must be equal: here, it's 3 low bytes, followed by 3 high
+bytes.  If the number of bytes selected can't be evenly divided by the
+number of parts, the formatter will report an error.</p>
+<p>With the data selected, open the format dialog with
+Actions &gt; Format Split-Address Table.  The rather complicated dialog
+is split into sections.</p>
+<ul>
+  <li>Address Characteristics: select whether the table has 16-bit
+  addresses or 24-bit addresses.  (24-bit addresses are disabled if you
+  don't have the CPU set to 65816.)  If the address parts are being pushed
+  on the stack for an RTS/RTL, check the "Adjusted for RTS/RTL" box to
+  adjust them by 1.</li>
+  <li>Low Bytes: indicate which part of the table holds the low bytes.  In
+  the example above, the low bytes came first, followed by the high bytes,
+  so you would select "first part of selection".  If they were stored the
+  other way around, you would click "second part" instead.</li>
+  <li>High Bytes: indicate which part of the table holds the high bytes.  For
+  a 16-bit address this will be the part you didn't pick for the low bytes.
+  Sometimes, if all addresses land on the same 256-byte page, the high byte
+  will be a constant in the code, and only the low bytes will be stored in
+  a table.  If that's the case, select "Constant", and enter the high byte
+  in the text box.  (Decimal, hex, and binary are accepted.)</li>
+  <li>Bank Bytes: for 24-bit addresses, you can select "Nth part of
+  selection", which will just use whichever part you didn't specify for
+  the low and high bytes.  If the table holds 16-bit addresses, you can
+  use the "Constant" field to specify the data bank.</li>
+  <li>Options: if the table holds the addresses of instructions, check
+  the "Add code entry hint if needed" box to add a code entry point hint
+  to anything that isn't already marked as an instruction.</li>
+  <li>Generated Addresses: this shows the full list of addresses that are
+  generated with the current set of parameters.  Each address is shown with
+  a file offset and a symbol.  If the address can't be mapped within the
+  file, the offset is shown as dashes instead.  If the address can be
+  mapped, and it already has a user-specified label, the label will be
+  shown.  If no label was found, the table will show "(+)", indicating
+  that a permanent label will be added at the target offset.</li>
+</ul>
+
+<p>For a 16-bit address, you have three choices: low byte first, high byte
+first, or low byte only with a constant high byte.  For a 24-bit address
+the set of possibilities expands, but is essentially the same: pick the
+order in which things appear, using fixed constants if desired.</p>
+
+<p>A message at the top of the screen shows how many bytes are selected.
+It also tells you how many groups there are, but unlike the data operand
+formatter, the split-address table formatter doesn't care about group
+boundaries.  For this reason, tables do not have to be contiguous in
+memory.  The low bytes and high bytes could be on separate 256-byte
+pages.</p>
+
+<p>It should be mentioned that SourceGen does not record the fact that the
+data in question is part of a table.  The formatting, labels, and code hints
+are applied as if you entered them all individually by hand.  The formatter
+is just significantly more convenient.  It also does everything as a single
+undoable action, so if it comes out looking wrong, just hit "undo".</p>
+
+
+<h3><a name="toggle-format">Toggle Single-Byte Format</a></h3>
+
+<p>The "Toggle Single-Byte Format" feature provides a quick way to
+change a range of bytes to single bytes
+or back to their default format.  It's equivalent to opening the Edit
+Data Format dialog and selecting "Single bytes" displayed as hex, or
+selecting "Default".</p>
+<p>This can be handy if the default format for a range of bytes is a
+string, but you want to see it as bytes or set a label in the middle.</p>
+
+
+<h3><a name="format-as-word">Format As Word</a></h3>
+
+<p>This is a quick way to format pairs of bytes as 16-bit words.  It's
+equivalent to opening the Edit Data Format dialog and selecting
+"16-bit words, little-endian", displayed as hex.</p>
+
+<p>To avoid some confusing situations, it only works on sets of
+single-byte values.  This means, for example, that you can't select a
+10-byte string and have it turn into five 16-bit words.  You can select as
+many bytes as you want, but they must come in pairs.  (Remember that you
+can turn off auto-generation of strings and .FILLs with
+<a href="#toggle-data">Toggle Data Scan</a>.)</p>
+<p>As a special case, if you select a single byte, the following byte will
+also be selected.  This won't work if the following byte is part of a
+multi-byte data item, is the start of a new region (see
+<a href="editors.html#data">Edit Data Format</a> for a definition of
+what splits a region), or is the last byte in the file.</p>
+
+
+<h3><a name="toggle-data">Toggle Data Scan</a></h3>
+
+<p>This menu item is in the Edit menu, and acts as a shortcut to opening
+the Project Properties editor, and clicking on the "Analyze Uncategorized
+Data" checkbox.  When enabled, SourceGen will look for ASCII strings and
+regions of identical bytes, and generate .STR and .FILL directives.  When
+disabled, uncategorized data is presented as one byte per line, which can
+be handy if you're trying to get at a byte in the middle of a string.</p>
+<p>As with all other project property changes, this is an undoable
+action.</p>
 
 
 <h3><a name="clipboard">Copying to Clipboard</a></h3>
@@ -298,18 +437,20 @@ copied to the system clipboard.  This can be a convenient way to post
 code snippets into forum postings or documentation.  The text is
 copied from the data shown on screen, so your chosen capitalization
 and pseudo-ops will appear in the copy.</p>
-<p>A copy of all of the fields is also written to the clipboard, in
-CSV format.  If you open a program like Excel, you can use Paste Special
-to put the data into individual cells.</p>
+<p>Long comments are included, but notes are not.</p>
+<p>By default, the label, opcode, operand, and comment fields are included.
+From the
+<a href="settings.html#app-settings">app settings</a> dialog you can select
+a different format, "Disassembly", which also includes the address and byte
+columns.</p>
 
-<p>By default, the label, opcode, operand, and comment fields are included
-in the text form.  From the
-<a href="settings.html#app-settings">app settings</a> you can select
-a different format that also includes the address and byte columns.</p>
+<p>A copy of all of the fields is also written to the clipboard in CSV
+format.  If you have a spreadsheet like Excel, you can use Paste Special
+to put the data into individual cells.</p>
 
 </div>
 
-<div id=footer>
+<div id="footer">
 <p><a href="index.html">Back to index</a></p>
 </div>
 </body>

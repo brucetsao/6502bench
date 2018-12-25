@@ -344,9 +344,17 @@ namespace SourceGen.AppForms {
                         if (operandLen == 1 && mIsPcRelative) {
                             operandLen = 2;
                         }
+                        PseudoOp.FormatNumericOpFlags flags;
+                        if (mIsPcRelative) {
+                            flags = PseudoOp.FormatNumericOpFlags.IsPcRel;
+                        } else if (mShowHashPrefix) {
+                            flags = PseudoOp.FormatNumericOpFlags.HasHashPrefix;
+                        } else {
+                            flags = PseudoOp.FormatNumericOpFlags.None;
+                        }
                         string str = PseudoOp.FormatNumericOperand(mFormatter,
                             mProject.SymbolTable, null, dfd,
-                            mOperandValue, operandLen, mIsPcRelative);
+                            mOperandValue, operandLen, flags);
                         preview.Append(str);
 
                         if (sym.SymbolSource == Symbol.Source.Auto) {
@@ -391,11 +399,13 @@ namespace SourceGen.AppForms {
 
             if (mAttr.OperandOffset >= 0) {
                 // Operand target is inside the file.  Does the target offset already have a label?
-                bool hasLabel = mProject.UserLabels.ContainsKey(mAttr.OperandOffset);
+                int targetOffset =
+                    DataAnalysis.GetBaseOperandOffset(mProject, mAttr.OperandOffset);
+                bool hasLabel = mProject.UserLabels.ContainsKey(targetOffset);
                 labelInsteadRadioButton.Enabled = operandAndLabelRadioButton.Enabled =
                     !hasLabel;
                 operandAndProjRadioButton.Enabled = false;
-                ShortcutArg = mAttr.OperandOffset;
+                ShortcutArg = targetOffset;
             } else if (mAttr.OperandAddress >= 0) {
                 // Operand target is outside the file.
                 labelInsteadRadioButton.Enabled = operandAndLabelRadioButton.Enabled = false;

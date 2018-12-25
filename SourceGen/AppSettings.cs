@@ -39,8 +39,11 @@ namespace SourceGen {
         // Main window.
         public const string MAIN_WINDOW_WIDTH = "main-window-width";
         public const string MAIN_WINDOW_HEIGHT = "main-window-height";
-        public const string MAIN_LEFT_SPLITTER_DIST = "main-left-splitter-dist";
-        public const string MAIN_RIGHT_SPLITTER_DIST = "main-right-splitter-dist";
+        public const string MAIN_WINDOW_LOC_X = "main-window-loc-x";
+        public const string MAIN_WINDOW_LOC_Y = "main-window-loc-y";
+        public const string MAIN_WINDOW_MAXIMIZED = "main-window-maximized";
+        public const string MAIN_LEFT_PANEL_WIDTH = "main-left-panel-width";
+        public const string MAIN_RIGHT_PANEL_WIDTH = "main-right-panel-width";
         public const string MAIN_LEFT_SIDE_SPLITTER_DIST = "main-left-side-splitter-dist";
         public const string MAIN_RIGHT_SIDE_SPLITTER_DIST = "main-right-side-splitter-dist";
 
@@ -55,6 +58,7 @@ namespace SourceGen {
         public const string FMT_UPPER_OPERAND_S = "fmt-upper-operand-s";
         public const string FMT_UPPER_OPERAND_XY = "fmt-upper-operand-xy";
         public const string FMT_ADD_SPACE_FULL_COMMENT = "fmt-add-space-full-comment";
+        public const string FMT_SPACES_BETWEEN_BYTES = "fmt-spaces-between-bytes";
 
         public const string FMT_OPCODE_SUFFIX_ABS = "fmt-opcode-suffix-abs";
         public const string FMT_OPCODE_SUFFIX_LONG = "fmt-opcode-suffix-long";
@@ -105,11 +109,8 @@ namespace SourceGen {
         // Main project view settings.
         public const string PRVW_RECENT_PROJECT_LIST = "prvw-recent-project-list";
 
-        // cc65 assembler settings
-        public const string ASM_CC65_EXECUTABLE = "asm-cc65-executable";
-
-        // Merlin 32 assembler settings.
-        public const string ASM_MERLIN32_EXECUTABLE = "asm-merlin32-executable";
+        // Assembler settings prefix
+        public const string ASM_CONFIG_PREFIX = "asm-config-";
 
         // Internal debugging features.
         public const string DEBUG_MENU_ENABLED = "debug-menu-enabled";

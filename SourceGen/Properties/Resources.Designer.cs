@@ -520,7 +520,7 @@ namespace SourceGen.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Assembler: {0} (latest).
+        ///   Looks up a localized string similar to Target assembler: {0} (latest).
         /// </summary>
         internal static string GENERATED_FOR_LATEST {
             get {
@@ -529,7 +529,7 @@ namespace SourceGen.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Assembler: {0} v{1}.
+        ///   Looks up a localized string similar to Target assembler: {0} v{1} [{2}].
         /// </summary>
         internal static string GENERATED_FOR_VERSION {
             get {
@@ -579,6 +579,42 @@ namespace SourceGen.Properties {
         internal static string INITIAL_SYMBOL_FILES {
             get {
                 return ResourceManager.GetString("INITIAL_SYMBOL_FILES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to (unknown address).
+        /// </summary>
+        internal static string INVALID_ADDRESS {
+            get {
+                return ResourceManager.GetString("INVALID_ADDRESS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid Selection.
+        /// </summary>
+        internal static string INVALID_FORMAT_WORD_SEL_CAPTION {
+            get {
+                return ResourceManager.GetString("INVALID_FORMAT_WORD_SEL_CAPTION", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to format as word: selection must be an even number of bytes that have not previously been formatted as multi-byte values.{0}Use Toggle Data Scan (Ctrl+D) to turn off auto-detection of strings and memory fill..
+        /// </summary>
+        internal static string INVALID_FORMAT_WORD_SEL_NON1 {
+            get {
+                return ResourceManager.GetString("INVALID_FORMAT_WORD_SEL_NON1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to format as word: each selected region must have an even number of bytes ({0} region(s) are selected)..
+        /// </summary>
+        internal static string INVALID_FORMAT_WORD_SEL_UNEVEN {
+            get {
+                return ResourceManager.GetString("INVALID_FORMAT_WORD_SEL_UNEVEN", resourceCulture);
             }
         }
         
@@ -745,6 +781,15 @@ namespace SourceGen.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Executing assembler....
+        /// </summary>
+        internal static string PROGRESS_ASSEMBLING {
+            get {
+                return ResourceManager.GetString("PROGRESS_ASSEMBLING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Generating {0}....
         /// </summary>
         internal static string PROGRESS_GENERATING_FMT {
@@ -889,6 +934,15 @@ namespace SourceGen.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ctrl+H was pressed, waiting for second key of chord....
+        /// </summary>
+        internal static string STATUS_CTRL_H_HIT {
+            get {
+                return ResourceManager.GetString("STATUS_CTRL_H_HIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Ready.
         /// </summary>
         internal static string STATUS_READY {
@@ -966,24 +1020,6 @@ namespace SourceGen.Properties {
         internal static string TITLE_NEW_PROJECT {
             get {
                 return ResourceManager.GetString("TITLE_NEW_PROJECT", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The current project has unsaved changes that will be lost. Are you sure you wish to continue?.
-        /// </summary>
-        internal static string UNSAVED_CHANGES {
-            get {
-                return ResourceManager.GetString("UNSAVED_CHANGES", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Unsaved Changes.
-        /// </summary>
-        internal static string UNSAVED_CHANGES_CAPTION {
-            get {
-                return ResourceManager.GetString("UNSAVED_CHANGES_CAPTION", resourceCulture);
             }
         }
         
